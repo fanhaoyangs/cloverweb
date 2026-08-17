@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选择图片</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #5a7d5a;
+            --primary-green-light: #7a9d7a;
+            --bg-light: #f8f9f7;
+            --bg-cream: #f5f5f0;
+            --text-dark: #2c3e2c;
+            --text-gray: #5a6b5a;
+            --text-light: #8a9a8a;
+            --white: #ffffff;
+            --shadow: rgba(90, 125, 90, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 14px;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+        }
+
+        .selector-container {
+            padding: 20px;
+        }
+
+        .selector-header {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .selector-search {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .selector-search input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid var(--bg-cream);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .selector-search input:focus {
+            outline: none;
+            border-color: var(--primary-green);
+        }
+
+        .tag-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid var(--bg-cream);
+            background: var(--white);
+            color: var(--text-gray);
+            text-decoration: none;
+        }
+
+        .tag-btn:hover {
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+        }
+
+        .tag-btn.active {
+            background: var(--primary-green);
+            border-color: var(--primary-green);
+            color: var(--white);
+        }
+
+        .selector-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+        }
+
+        .selector-item {
+            background: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px var(--shadow);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .selector-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .selector-item.selected {
+            border-color: var(--primary-green);
+        }
+
+        .selector-item img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .selector-item-name {
+            padding: 8px;
+            font-size: 12px;
+            color: var(--text-dark);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .selector-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            box-shadow: 0 -2px 10px var(--shadow);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-green);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-green-light);
+        }
+
+        .btn-primary:disabled {
+            background: var(--text-light);
+            cursor: not-allowed;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--bg-cream);
+            color: var(--text-gray);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 40px;
+            background: var(--white);
+            border-radius: 12px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .selected-info {
+            flex: 1;
+            color: var(--text-gray);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="selector-container">
+        <div class="selector-header">
+            <div class="selector-search">
+                <input type="text" id="searchInput" placeholder="搜索图片..." value="{{ search }}">
+            </div>
+            <div class="tag-filter">
+                <a href="/admin/gallery/select" class="tag-btn {% if not tag_id %}active{% endif %}">全部</a>
+                {% for tag in tags %}
+                <a href="/admin/gallery/select?tag_id={{ tag.id }}" 
+                   class="tag-btn {% if tag_id == tag.id %}active{% endif %}">
+                    {{ tag.name }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if images %}
+        <div class="selector-grid">
+            {% for img in images %}
+            <div class="selector-item" data-url="{{ img.url }}" data-key="{{ img.key }}" onclick="selectImage(this)">
+                <img src="{{ img.thumbnail_url }}" alt="{{ img.filename }}" loading="lazy">
+                <div class="selector-item-name">{{ img.filename }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">🖼️</div>
+            <h3>暂无图片</h3>
+            <p>请先上传图片到图片库</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="selector-actions">
+        <span class="selected-info" id="selectedInfo">点击图片选择</span>
+        <button class="btn btn-outline" onclick="cancelSelect()">取消</button>
+        <button class="btn btn-primary" id="confirmBtn" onclick="confirmSelect()" disabled>确定</button>
+    </div>
+
+    <script>
+        let selectedImage = null;
+
+        function selectImage(element) {
+            document.querySelectorAll('.selector-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            selectedImage = {
+                url: element.dataset.url,
+                key: element.dataset.key
+            };
+            
+            document.getElementById('selectedInfo').textContent = '已选择: ' + element.querySelector('.selector-item-name').textContent;
+            document.getElementById('confirmBtn').disabled = false;
+        }
+
+        function cancelSelect() {
+            if (window.opener) {
+                window.close();
+            } else {
+                if (parent && parent !== window) {
+                    parent.postMessage({ type: 'cancel' }, '*');
+                }
+            }
+        }
+
+        function confirmSelect() {
+            if (!selectedImage) return;
+            
+            if (window.opener) {
+                window.opener.postMessage({
+                    type: 'imageSelected',
+                    url: selectedImage.url
+                }, '*');
+                window.close();
+            } else if (parent && parent !== window) {
+                parent.postMessage({
+                    type: 'imageSelected',
+                    url: selectedImage.url
+                }, '*');
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const search = this.value.trim();
+                let url = '/admin/gallery/select';
+                const params = [];
+                if (search) params.push('search=' + encodeURIComponent(search));
+                if ({{ tag_id | tojson }}) params.push('tag_id={{ tag_id }}');
+                if (params.length) url += '?' + params.join('&');
+                window.location.href = url;
+            }
+        });
+    </script>
+</body>
+</html>

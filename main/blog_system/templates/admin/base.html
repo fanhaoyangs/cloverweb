@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}管理后台 - 资讯分享{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============ CSS变量（与前台保持一致）============ */
+        :root {
+            --primary-green: #5a7d5a;
+            --primary-green-light: #7a9d7a;
+            --primary-green-dark: #3d5a3d;
+            --bg-light: #f8f9f7;
+            --bg-cream: #f5f5f0;
+            --text-dark: #2c3e2c;
+            --text-gray: #5a6b5a;
+            --text-light: #8a9a8a;
+            --white: #ffffff;
+            --shadow: rgba(90, 125, 90, 0.1);
+            --shadow-hover: rgba(90, 125, 90, 0.2);
+            --sidebar-width: 260px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 14px;
+            line-height: 1.9;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+            font-weight: 300;
+            min-height: 100vh;
+        }
+
+        /* ============ 布局============ */
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 侧边栏 */
+        .admin-sidebar {
+            width: var(--sidebar-width);
+            background: var(--white);
+            box-shadow: 2px 0 20px var(--shadow);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 30px 25px;
+            border-bottom: 1px solid var(--bg-cream);
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--white);
+            text-decoration: none;
+        }
+
+        .sidebar-logo img {
+            height: 45px;
+        }
+
+        .sidebar-logo-text {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 5px;
+        }
+
+        /* 侧边栏菜单 */
+        .sidebar-nav {
+            padding: 20px 0;
+            flex: 1;
+        }
+
+        .nav-section {
+            margin-bottom: 25px;
+        }
+
+        .nav-section-title {
+            padding: 10px 25px;
+            font-size: 12px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 25px;
+            color: var(--text-gray);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: var(--bg-light);
+            color: var(--primary-green);
+            border-left-color: var(--primary-green);
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .nav-item span {
+            font-size: 14px;
+        }
+
+        /* 侧边栏底部 */
+        .sidebar-footer {
+            padding: 20px 25px;
+            border-top: 1px solid var(--bg-cream);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-green);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 15px;
+            background: var(--bg-cream);
+            color: var(--text-gray);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: var(--primary-green);
+            color: var(--white);
+        }
+
+        /* 主内容区 */
+        .admin-main {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+        }
+
+        .admin-header {
+            background: var(--white);
+            padding: 20px 30px;
+            box-shadow: 0 2px 15px var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .admin-header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .admin-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+
+        .admin-breadcrumb a {
+            color: var(--primary-green);
+            text-decoration: none;
+        }
+
+        .admin-breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .admin-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            color: var(--text-gray);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .header-link:hover {
+            background: var(--bg-light);
+            color: var(--primary-green);
+        }
+
+        .header-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .admin-content {
+            padding: 30px;
+        }
+
+        /* ============ 通用组件============ */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 28px;
+            color: var(--text-dark);
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        /* 按钮 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--primary-green);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: var(--primary-green-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary-green);
+            color: var(--primary-green);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-green);
+            color: var(--white);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        /* 卡片 */
+        .card {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--bg-cream);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 18px;
+            color: var(--text-dark);
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        /* 表格 */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--bg-cream);
+        }
+
+        th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            color: var(--text-gray);
+            font-size: 14px;
+        }
+
+        tr:hover td {
+            background: var(--bg-light);
+        }
+
+        /* 状态标签 */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.published {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.draft {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.archived {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        /* 提示消息 */
+        .messages {
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            z-index: 1001;
+            max-width: 400px;
+        }
+
+        .message {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px var(--shadow);
+            animation: slideIn 0.3s ease;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* 表单元素 */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .form-label .required {
+            color: #dc3545;
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--bg-cream);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary-green);
+        }
+
+        .form-textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        /* 分页 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 30px;
+        }
+
+        .pagination a,
+        .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-gray);
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: var(--white);
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .pagination a:hover {
+            background: var(--primary-green);
+            color: var(--white);
+        }
+
+        .pagination .current {
+            background: var(--primary-green);
+            color: var(--white);
+        }
+
+        .pagination .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .stat-card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .stat-card-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--white);
+        }
+
+        .stat-card-icon.green { background: linear-gradient(135deg, var(--primary-green), var(--primary-green-light)); }
+        .stat-card-icon.blue { background: linear-gradient(135deg, #007bff, #00a8ff); }
+        .stat-card-icon.orange { background: linear-gradient(135deg, #fd7e14, #ffc107); }
+        .stat-card-icon.purple { background: linear-gradient(135deg, #6f42c1, #9b59b6); }
+
+        .stat-card-value {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-dark);
+            line-height: 1;
+        }
+
+        .stat-card-label {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-top: 8px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1100px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .admin-sidebar.active {
+                transform: translateX(0);
+            }
+
+            .admin-main {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- 侧边栏 -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <a href="https://communitygarden.org.cn/clover.html" class="sidebar-logo">
+                    <img src="/images/四叶草堂LOGO.png" alt="四叶草堂">
+                    <span class="sidebar-logo-text">四叶草堂</span>
+                </a>
+                <p class="sidebar-subtitle">资讯分享管理后台</p>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">内容管理</div>
+                    <a href="/admin/" class="nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                        <span>仪表盘</span>
+                    </a>
+                    <a href="/admin/posts/" class="nav-item {% if 'post' in request.endpoint %}active{% endif %}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span>文章管理</span>
+                    </a>
+                    <a href="/admin/categories/" class="nav-item {% if 'category' in request.endpoint %}active{% endif %}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>分类管理</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">快捷操作</div>
+                    <a href="/admin/posts/new/" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12"cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span>新建文章</span>
+                    </a>
+                    <a href="/admin/feishu/" class="nav-item {% if 'feishu' in request.endpoint %}active{% endif %}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>飞书导入</span>
+                    </a>
+                    <a href="/admin/gallery/" class="nav-item {% if 'gallery' in request.endpoint %}active{% endif %}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <span>图片库</span>
+                    </a>
+                    <a href="/news" target="_blank" class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        <span>查看前台</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">{{ current_user.display_name[0] if current_user.display_name else current_user.username[0] }}</div>
+                    <div>
+                        <div class="user-name">{{ current_user.display_name or current_user.username }}</div>
+                        <div class="user-role">{% if current_user.is_admin %}管理员{% else %}编辑{% endif %}</div>
+                    </div>
+                </div>
+                <a href="/admin/password/" class="menu-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    修改密码
+                </a>
+                <a href="/admin/logout/" class="logout-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    退出登录
+                </a>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="admin-main">
+            <!-- 提示消息 -->
+            <div class="messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- 内容 -->
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

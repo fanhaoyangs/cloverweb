@@ -1,0 +1,175 @@
+{% extends "admin/base.html" %}
+
+{% block title %}仪表盘 - 管理后台{% endblock %}
+
+{% block content %}
+<!-- 顶部导航 -->
+<header class="admin-header">
+    <div class="admin-header-left">
+        <div class="admin-breadcrumb">
+            <a href="/admin/">首页</a>
+            <span>/</span>
+            <span>仪表盘</span>
+        </div>
+    </div>
+    <div class="admin-header-actions">
+        <a href="/news" target="_blank" class="header-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            查看前台
+        </a>
+        <a href="/admin/posts/new/" class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            新建文章
+        </a>
+    </div>
+</header>
+
+<!-- 主要内容 -->
+<div class="admin-content">
+    <!-- 统计卡片 -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+            </div>
+            <div class="stat-card-value">{{ post_count }}</div>
+            <div class="stat-card-label">文章总数</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <div class="stat-card-value">{{ published_count }}</div>
+            <div class="stat-card-label">已发布文章</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-icon orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </div>
+            <div class="stat-card-value">{{ draft_count }}</div>
+            <div class="stat-card-label">草稿文章</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <div class="stat-card-value">{{ category_count }}</div>
+            <div class="stat-card-label">分类数量</div>
+        </div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="card" style="margin-bottom: 30px;">
+        <div class="card-header">
+            <h3 class="card-title">快捷操作</h3>
+        </div>
+        <div class="card-body">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <a href="/admin/posts/new/" class="btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    新建文章
+                </a>
+                <a href="/admin/categories/" class="btn btn-outline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    管理分类
+                </a>
+                <a href="/admin/posts/" class="btn btn-outline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    文章列表
+                </a>
+                <a href="/news" target="_blank" class="btn btn-outline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    查看前台
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近文章 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">最近文章</h3>
+            <a href="/admin/posts/" class="btn btn-small btn-outline">查看全部</a>
+        </div>
+        <div class="card-body">
+            {% if recent_posts %}
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>分类</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for post in recent_posts %}
+                        <tr>
+                            <td>
+                                <a href="/admin/posts/{{ post.id }}/edit/" style="color: var(--text-dark); text-decoration: none;">
+                                    {{ post.title[:30] }}{{ '...' if post.title|length > 30 else '' }}
+                                </a>
+                            </td>
+                            <td>{{ post.category.name if post.category else '未分类' }}</td>
+                            <td>
+                                <span class="status-badge {{ post.status }}">
+                                    {% if post.status == 'published' %}已发布
+                                    {% elif post.status == 'draft' %}草稿
+                                    {% else %}已归档{% endif %}
+                                </span>
+                            </td>
+                            <td>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <a href="/admin/posts/{{ post.id }}/edit/" class="btn btn-small" style="padding: 5px 12px;">编辑</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 50px 20px; color: var(--text-light);">
+                <p style="margin-bottom: 20px;">暂无文章</p>
+                <a href="/admin/posts/new/" class="btn">新建第一篇文章</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}服务器错误 - 四叶草堂{% endblock %}
+
+{% block extra_css %}
+<style>
+    .error-container {
+        text-align: center;
+        padding: 100px 40px;
+    }
+    
+    .error-code {
+        font-family: 'Noto Serif SC', serif;
+        font-size: 120px;
+        font-weight: 700;
+        color: var(--primary-green);
+        line-height: 1;
+        margin-bottom: 20px;
+    }
+    
+    .error-title {
+        font-family: 'Noto Serif SC', serif;
+        font-size: 32px;
+        color: var(--text-dark);
+        margin-bottom: 20px;
+    }
+    
+    .error-message {
+        font-size: 16px;
+        color: var(--text-gray);
+        margin-bottom: 40px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="error-container">
+    <div class="error-code">500</div>
+    <h1 class="error-title">服务器错误</h1>
+    <p class="error-message">抱歉，服务器出了点问题，请稍后再试</p>
+    <a href="/news" class="btn">返回资讯列表</a>
+</section>
+{% endblock %}

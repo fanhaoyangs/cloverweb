@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>XIUMI connect</title>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        #xiumi {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: none;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <iframe id="xiumi" src="https://xiumi.us/studio/v5#/paper">
+    </iframe>
+    <script>
+        console.log("[xiumi-dialog] HTML loaded, script running");
+
+        var xiumi = document.getElementById('xiumi');
+        var xiumi_url = "https://xiumi.us";
+        var parentWindow = window.parent;
+        console.log("[xiumi-dialog] parentWindow:", parentWindow);
+
+        var dialog = null;
+        var editor = null;
+
+        try {
+            dialog = parentWindow.$EDITORUI[window.frameElement.id.replace(/_iframe$/, '')];
+            editor = dialog.editor;
+            console.log("[xiumi-dialog] dialog from parent:", dialog);
+            console.log("[xiumi-dialog] editor from parent:", editor);
+        } catch (e) {
+            console.error("[xiumi-dialog] Error getting dialog/editor:", e);
+        }
+
+        xiumi.onload = function () {
+            console.log("[xiumi-dialog] iframe loaded, sending postMessage: 'XIUMI:3rdEditor:Connect'");
+            try {
+                xiumi.contentWindow.postMessage('XIUMI:3rdEditor:Connect', xiumi_url);
+                console.log("[xiumi-dialog] postMessage sent successfully");
+            } catch (e) {
+                console.error("[xiumi-dialog] Error sending postMessage:", e);
+            }
+        };
+
+        document.addEventListener("mousewheel", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }, { passive: false });
+
+        const imageCache = {};
+
+        async function uploadImageToCos(imageUrl) {
+            const cacheKey = imageUrl.split('?')[0];
+            if (imageCache[cacheKey]) {
+                console.log("[xiumi-dialog] 图片已缓存，跳过上传:", cacheKey);
+                return imageCache[cacheKey];
+            }
+            console.log("[xiumi-dialog] 通过云函数代理上传图片:", imageUrl);
+            try {
+                const parentCloudBase = window.parent.cloudBase;
+                if (!parentCloudBase) {
+                    console.error("[xiumi-dialog] cloudBase实例不可用");
+                    return null;
+                }
+
+                await parentCloudBase.init();
+
+                const res = await parentCloudBase.callFunction({
+                    name: 'getPresignedUrl',
+                    data: {
+                        action: 'proxyUploadImage',
+                        imageUrl: imageUrl
+                    }
+                });
+
+                console.log("[xiumi-dialog] proxyUploadImage响应:", res);
+
+                if (res.result.errCode !== 0) {
+                    console.error("[xiumi-dialog] 代理上传失败:", res.result.errMsg);
+                    return null;
+                }
+
+                const fileUrl = res.result.fileUrl;
+                console.log("[xiumi-dialog] 代理上传成功:", fileUrl);
+                imageCache[cacheKey] = fileUrl;
+                return fileUrl;
+            } catch (error) {
+                console.error("[xiumi-dialog] 代理上传出错:", error);
+                return null;
+            }
+        }
+
+        function isXiumiUrl(url) {
+            return url && (url.includes('xiumi.us') || url.includes('xiumi.cn'));
+        }
+
+        async function processXiumiImages(html) {
+            console.log("[xiumi-dialog] 开始处理秀米图片, 原始HTML长度:", html.length);
+
+            const xiumiUrlPattern = /https?:\/\/img\.xiumi\.us\/xmi\/[^"')\s?]+/g;
+            const urls = new Set();
+            let match;
+            while ((match = xiumiUrlPattern.exec(html)) !== null) {
+                urls.add(match[0]);
+            }
+
+            const bgUrlPattern = /background-image\s*:\s*url\(\s*["']?(https?:\/\/[^"')\s]+)["']?\s*\)/g;
+            while ((match = bgUrlPattern.exec(html)) !== null) {
+                if (isXiumiUrl(match[1])) {
+                    urls.add(match[1]);
+                }
+            }
+
+            const srcUrlPattern = /src\s*=\s*["'](https?:\/\/img\.xiumi\.us\/xmi\/[^"']+)["']/g;
+            while ((match = srcUrlPattern.exec(html)) !== null) {
+                urls.add(match[1]);
+            }
+
+            console.log("[xiumi-dialog] 找到秀米图片URL数量:", urls.size);
+
+            const urlMap = {};
+            let processedCount = 0;
+            for (const url of urls) {
+                const cosUrl = await uploadImageToCos(url);
+                if (cosUrl) {
+                    urlMap[url] = cosUrl;
+                    processedCount++;
+                }
+            }
+
+            let result = html;
+            for (const [oldUrl, newUrl] of Object.entries(urlMap)) {
+                const escaped = oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                result = result.replace(new RegExp(escaped, 'g'), newUrl);
+            }
+
+            console.log("[xiumi-dialog] 图片处理完成，成功处理:", processedCount, "张图片");
+            return result;
+        }
+
+        async function handleMessage(event) {
+            console.log("[xiumi-dialog] Received message:", {
+                origin: event.origin,
+                data: event.data ? (typeof event.data === 'string' ? event.data.substring(0, 200) + '...' : event.data) : 'null',
+                source: event.source
+            });
+
+            console.log("[xiumi-dialog] Expected origins:", [xiumi_url, 'https://xiumi.us']);
+            console.log("[xiumi-dialog] Origin matches:", event.origin === xiumi_url || event.origin === 'https://xiumi.us');
+
+            if (event.origin === xiumi_url || event.origin === 'https://xiumi.us') {
+                console.log("[xiumi-dialog] Valid message from秀米");
+                if (event.data) {
+                    console.log("[xiumi-dialog] Message data type:", typeof event.data);
+                    if (typeof event.data === 'string' && event.data.length > 0) {
+                        console.log("[xiumi-dialog] Inserting HTML, length:", event.data.length);
+                        try {
+                            if (editor) {
+                                console.log("[xiumi-dialog] 开始处理秀米图片...");
+                                const processedHtml = await processXiumiImages(event.data);
+                                console.log("[xiumi-dialog] 图片处理完成，准备插入HTML");
+                                editor.execCommand('insertHtml', processedHtml);
+                                console.log("[xiumi-dialog] Insert success");
+                                if (dialog) {
+                                    dialog.close();
+                                    console.log("[xiumi-dialog] Dialog closed");
+                                }
+                            } else {
+                                console.error("[xiumi-dialog] editor is null!");
+                            }
+                        } catch (e) {
+                            console.error("[xiumi-dialog] Error inserting HTML:", e);
+                        }
+                    } else {
+                        console.log("[xiumi-dialog] Message data is empty or not string:", event.data);
+                    }
+                } else {
+                    console.log("[xiumi-dialog] Message data is null/undefined");
+                }
+            }
+        }
+
+        window.addEventListener('message', handleMessage, false);
+        console.log("[xiumi-dialog] Message listener added");
+        console.log("[xiumi-dialog] Script loaded, waiting for xiumi...");
+    </script>
+</body>
+
+</html>

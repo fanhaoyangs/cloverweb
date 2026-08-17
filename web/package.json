@@ -1,0 +1,25 @@
+{
+  "name": "clover-web-admin",
+  "version": "1.0.0",
+  "description": "CloverHub Web Admin - 活动管理后台",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@cloudbase/framework-plugin-website": "^1.9.7",
+    "@cloudbase/js-sdk": "^2.27.1",
+    "@element-plus/icons-vue": "^2.3.1",
+    "axios": "^1.6.2",
+    "element-plus": "^2.5.0",
+    "file-saver": "^2.0.5",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.2",
+    "vite": "^5.0.10"
+  }
+}

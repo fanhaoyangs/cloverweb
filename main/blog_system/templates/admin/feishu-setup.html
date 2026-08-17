@@ -1,0 +1,62 @@
+{% extends "admin/base.html" %}
+
+{% block title %}飞书配置 - 管理后台{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div class="admin-header-left">
+        <div class="admin-breadcrumb">
+            <a href="/admin/">仪表盘</a>
+            <span>/</span>
+            <span>飞书文档导入</span>
+        </div>
+    </div>
+</div>
+
+<div class="admin-content">
+    <div class="page-header">
+        <h1 class="page-title">飞书文档导入</h1>
+    </div>
+
+    <div class="card">
+        <div class="card-body" style="text-align: center; padding: 60px 30px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 80px; height: 80px; color: var(--primary-green); margin-bottom: 20px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <h2 style="font-family: 'Noto Serif SC', serif; font-size: 24px; margin-bottom: 15px; color: var(--text-dark);">需要配置飞书应用</h2>
+            <p style="color: var(--text-gray); margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                在使用飞书文档导入功能之前，需要先在飞书开放平台创建应用，并配置相关参数。
+            </p>
+            
+            <div class="setup-steps" style="text-align: left; max-width: 600px; margin: 0 auto 30px; background: var(--bg-light); padding: 25px; border-radius: 12px;">
+                <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark);">配置步骤：</h3>
+                <ol style="color: var(--text-gray); line-height: 2; padding-left: 20px;">
+                    <li>访问 <a href="https://open.feishu.cn" target="_blank" style="color: var(--primary-green);">飞书开放平台</a> 创建企业内部应用</li>
+                    <li>在应用详情页获取 App ID 和 App Secret</li>
+                    <li>配置应用权限：文档读取、用户信息读取</li>
+                    <li>设置重定向URL：<code style="background: var(--white); padding: 2px 8px; border-radius: 4px;">{{ request.host_url }}admin/feishu/callback</code></li>
+                    <li>在系统环境变量或 .env 文件中配置：
+                        <pre style="background: var(--white); padding: 15px; border-radius: 8px; margin-top: 10px; overflow-x: auto; font-size: 13px;">
+FEISHU_APP_ID=your_app_id
+FEISHU_APP_SECRET=your_app_secret
+FEISHU_REDIRECT_URI={{ request.host_url }}admin/feishu/callback</pre>
+                    </li>
+                </ol>
+            </div>
+
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <a href="https://open.feishu.cn/document/home/introduction-to-feishu-open-platform/" target="_blank" class="btn btn-outline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    查看开发文档
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

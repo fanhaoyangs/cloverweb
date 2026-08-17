@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工时管理 - 管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root { --primary-color: #2E7D32; --bg-color: #F5F5F5; }
+        body { background-color: var(--bg-color); font-family: 'Noto Sans SC', sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .card-header { background: linear-gradient(135deg, var(--primary-color), #4CAF50); color: white; border-radius: 12px 12px 0 0 !important; }
+        .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background-color: #4CAF50; border-color: #4CAF50; }
+        .quick-link { transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; }
+        .quick-link:hover { transform: translateY(-5px); box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        .stat-card { border-left: 4px solid var(--primary-color); }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="mb-4">
+            <h2 class="mb-1" style="color: var(--primary-color);">
+                <i class="bi bi-gear-wide-connected me-2"></i>工时统计管理后台
+            </h2>
+            <p class="text-muted mb-0">管理系统员工的工时填报和统计</p>
+        </div>
+
+        <!-- 快捷入口 -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <a href="/workhour/admin/employees/" class="quick-link">
+                    <div class="card stat-card h-100">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-people-fill fs-1 text-primary mb-3"></i>
+                            <h5 class="card-title">员工管理</h5>
+                            <p class="card-text text-muted">添加、编辑、删除员工信息</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/workhour/admin/status/" class="quick-link">
+                    <div class="card stat-card h-100">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-clipboard-check-fill fs-1 text-success mb-3"></i>
+                            <h5 class="card-title">提交状态</h5>
+                            <p class="card-text text-muted">查看员工工时提交情况</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/workhour/admin/summary/" class="quick-link">
+                    <div class="card stat-card h-100">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-collection-fill fs-1 text-info mb-3"></i>
+                            <h5 class="card-title">月度汇总</h5>
+                            <p class="card-text text-muted">生成并导出月度工时汇总表</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 功能说明 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>功能说明</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary"><i class="bi bi-people me-2"></i>员工管理</h6>
+                        <ul class="text-muted">
+                            <li>管理需要填报工时的员工名单</li>
+                            <li>绑定员工的飞书账号信息</li>
+                            <li>设置员工所属部门</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success"><i class="bi bi-clipboard-check me-2"></i>提交状态</h6>
+                        <ul class="text-muted">
+                            <li>查看每月工时提交情况</li>
+                            <li>统计提交率和未提交人员</li>
+                            <li>手动发送填报提醒通知</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-info"><i class="bi bi-collection me-2"></i>月度汇总</h6>
+                        <ul class="text-muted">
+                            <li>生成指定月份的工时汇总表</li>
+                            <li>包含员工姓名、项目名称、工时分配</li>
+                            <li>支持导出CSV和打印</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-warning"><i class="bi bi-gear me-2"></i>飞书配置</h6>
+                        <ul class="text-muted">
+                            <li>配置飞书多维表格连接</li>
+                            <li>设置项目信息汇总表ID</li>
+                            <li>配置机器人通知参数</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

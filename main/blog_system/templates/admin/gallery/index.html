@@ -1,0 +1,673 @@
+{% extends "admin/base.html" %}
+
+{% block title %}图片库管理 - 管理后台{% endblock %}
+
+{% block extra_css %}
+<style>
+.gallery-toolbar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.gallery-search {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.gallery-search input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid var(--bg-cream);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.gallery-search input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+}
+
+.tag-filter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tag-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid var(--bg-cream);
+    background: var(--white);
+    color: var(--text-gray);
+    text-decoration: none;
+}
+
+.tag-btn:hover {
+    border-color: var(--primary-green);
+    color: var(--primary-green);
+}
+
+.tag-btn.active {
+    background: var(--primary-green);
+    border-color: var(--primary-green);
+    color: var(--white);
+}
+
+.date-filter {
+    display: flex;
+    gap: 10px;
+}
+
+.date-filter select {
+    padding: 8px 12px;
+    border: 2px solid var(--bg-cream);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-gray);
+    background: var(--white);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.date-filter select:hover {
+    border-color: var(--primary-green);
+}
+
+.date-filter select:focus {
+    outline: none;
+    border-color: var(--primary-green);
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+}
+
+.gallery-item {
+    background: var(--white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px var(--shadow);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.gallery-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px var(--shadow-hover);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    display: block;
+}
+
+.gallery-item-info {
+    padding: 12px;
+}
+
+.gallery-item-name {
+    font-size: 13px;
+    color: var(--text-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 5px;
+}
+
+.gallery-item-size {
+    font-size: 11px;
+    color: var(--text-light);
+}
+
+.gallery-item-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.gallery-item-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--bg-cream);
+    color: var(--text-gray);
+}
+
+.gallery-item-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gallery-item:hover .gallery-item-actions {
+    opacity: 1;
+}
+
+.gallery-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.gallery-action-btn:hover {
+    background: var(--primary-green);
+    color: var(--white);
+}
+
+.gallery-action-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.gallery-empty {
+    text-align: center;
+    padding: 80px 40px;
+    background: var(--white);
+    border-radius: 12px;
+}
+
+.gallery-empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.gallery-empty h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 20px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.gallery-empty p {
+    color: var(--text-light);
+}
+
+.gallery-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 30px;
+}
+
+.gallery-pagination a,
+.gallery-pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-gray);
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background: var(--white);
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.gallery-pagination a:hover {
+    background: var(--primary-green);
+    color: var(--white);
+}
+
+.gallery-pagination .current {
+    background: var(--primary-green);
+    color: var(--white);
+}
+
+.tag-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.tag-modal.show {
+    display: flex;
+}
+
+.tag-modal-content {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 25px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.tag-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.tag-modal-header h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    color: var(--text-dark);
+}
+
+.tag-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+.tag-modal-close:hover {
+    color: var(--text-dark);
+}
+
+.tag-checkbox-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tag-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.tag-checkbox-item:hover {
+    background: var(--bg-light);
+}
+
+.tag-checkbox-item input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.tag-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.tag-modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+.image-preview-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-preview-modal.show {
+    display: flex;
+}
+
+.image-preview-modal img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+}
+
+.image-preview-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-preview-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.image-preview-info {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 80%;
+}
+
+.image-preview-url {
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
+    margin-top: 8px;
+    opacity: 0.8;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+<header class="admin-header">
+    <div class="admin-header-left">
+        <div class="admin-breadcrumb">
+            <a href="/admin/">首页</a>
+            <span>/</span>
+            <span>图片库管理</span>
+        </div>
+    </div>
+    <div class="admin-header-actions">
+        <a href="/admin/gallery/tags" class="btn btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+            </svg>
+            标签管理
+        </a>
+    </div>
+</header>
+
+<div class="admin-content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">图片库</h1>
+            <p class="page-subtitle">管理和浏览腾讯云 COS 中的图片资源，共 {{ total }} 张图片</p>
+        </div>
+    </div>
+
+    <div class="gallery-toolbar">
+        <div class="gallery-search">
+            <input type="text" id="searchInput" placeholder="搜索图片名称或路径..." value="{{ search }}">
+        </div>
+        
+        <div class="date-filter">
+            <select id="yearFilter" onchange="applyDateFilter()">
+                <option value="">全部年份</option>
+                {% for year in available_years %}
+                <option value="{{ year }}" {% if filter_year == year %}selected{% endif %}>{{ year }}年</option>
+                {% endfor %}
+            </select>
+            <select id="monthFilter" onchange="applyDateFilter()">
+                <option value="">全部月份</option>
+                {% for month in range(1, 13) %}
+                <option value="{{ '%02d' % month }}" {% if filter_month == '%02d' % month %}selected{% endif %}>{{ month }}月</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="tag-filter">
+            <a href="/admin/gallery/" class="tag-btn {% if not tag_id %}active{% endif %}">全部标签</a>
+            {% for tag in tags %}
+            <a href="/admin/gallery/?tag_id={{ tag.id }}{% if filter_year %}&year={{ filter_year }}{% endif %}{% if filter_month %}&month={{ filter_month }}{% endif %}" 
+               class="tag-btn {% if tag_id == tag.id %}active{% endif %}"
+               style="{% if tag_id == tag.id %}background: {{ tag.color }}; border-color: {{ tag.color }};{% endif %}">
+                {{ tag.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if images %}
+    <div class="gallery-grid">
+        {% for img in images %}
+        <div class="gallery-item" data-key="{{ img.key }}" data-url="{{ img.url }}">
+            <img src="{{ img.thumbnail_url }}" alt="{{ img.filename }}" loading="lazy">
+            <div class="gallery-item-actions">
+                <button class="gallery-action-btn" onclick="previewImage('{{ img.url }}', '{{ img.filename }}')" title="预览">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </button>
+                <button class="gallery-action-btn" onclick="copyImageUrl('{{ img.url }}')" title="复制链接">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button class="gallery-action-btn" onclick="openTagModal('{{ img.key }}')" title="设置标签">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="gallery-item-info">
+                <div class="gallery-item-name" title="{{ img.filename }}">{{ img.filename }}</div>
+                <div class="gallery-item-size">{{ (img.size / 1024)|round(1) }} KB</div>
+                {% if img.tags %}
+                <div class="gallery-item-tags">
+                    {% for tag_name in img.tags %}
+                    <span class="gallery-item-tag">{{ tag_name }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if total > 30 %}
+    <div class="gallery-pagination">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search %}&search={{ search }}{% endif %}">&laquo; 上一页</a>
+        {% endif %}
+        
+        <span class="current">{{ page }}</span>
+        
+        {% if page * 30 < total %}
+        <a href="?page={{ page + 1 }}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search %}&search={{ search }}{% endif %}">下一页 &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="gallery-empty">
+        <div class="gallery-empty-icon">🖼️</div>
+        <h3>暂无图片</h3>
+        <p>腾讯云 COS 中还没有图片，请先上传图片</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="tag-modal" id="tagModal">
+    <div class="tag-modal-content">
+        <div class="tag-modal-header">
+            <h3>设置图片标签</h3>
+            <button class="tag-modal-close" onclick="closeTagModal()">&times;</button>
+        </div>
+        <div class="tag-checkbox-list" id="tagCheckboxList">
+            {% for tag in tags %}
+            <label class="tag-checkbox-item">
+                <input type="checkbox" name="tag_{{ tag.id }}" value="{{ tag.id }}">
+                <span class="tag-color-dot" style="background: {{ tag.color }}"></span>
+                <span>{{ tag.name }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        <div class="tag-modal-actions">
+            <button class="btn btn-outline" onclick="closeTagModal()">取消</button>
+            <button class="btn" onclick="saveTags()">保存</button>
+        </div>
+    </div>
+</div>
+
+<div class="image-preview-modal" id="imagePreviewModal">
+    <button class="image-preview-close" onclick="closePreviewModal()">&times;</button>
+    <img id="previewImage" src="" alt="">
+    <div class="image-preview-info">
+        <div id="previewFilename"></div>
+        <div class="image-preview-url" id="previewUrl"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentImageKey = null;
+const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        applyFilters();
+    }
+});
+
+function applyFilters() {
+    const search = document.getElementById('searchInput').value.trim();
+    const year = document.getElementById('yearFilter').value;
+    const month = document.getElementById('monthFilter').value;
+    
+    let url = '/admin/gallery/';
+    const params = [];
+    if (search) params.push('search=' + encodeURIComponent(search));
+    if (year) params.push('year=' + year);
+    if (month) params.push('month=' + month);
+    if ({{ tag_id | tojson }}) params.push('tag_id={{ tag_id }}');
+    if (params.length) url += '?' + params.join('&');
+    window.location.href = url;
+}
+
+function applyDateFilter() {
+    applyFilters();
+}
+
+function previewImage(url, filename) {
+    document.getElementById('previewImage').src = url;
+    document.getElementById('previewFilename').textContent = filename;
+    document.getElementById('previewUrl').textContent = url;
+    document.getElementById('imagePreviewModal').classList.add('show');
+}
+
+function closePreviewModal() {
+    document.getElementById('imagePreviewModal').classList.remove('show');
+}
+
+function copyImageUrl(url) {
+    navigator.clipboard.writeText(url).then(function() {
+        alert('图片链接已复制到剪贴板');
+    }).catch(function() {
+        prompt('请手动复制链接:', url);
+    });
+}
+
+function openTagModal(imageKey) {
+    currentImageKey = imageKey;
+    
+    fetch('/admin/gallery/image/' + encodeURIComponent(imageKey) + '/tags')
+        .then(response => response.json())
+        .then(data => {
+            const checkboxes = document.querySelectorAll('#tagCheckboxList input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            
+            if (data.tags) {
+                data.tags.forEach(tagName => {
+                    {% for tag in tags %}
+                    if (tagName === '{{ tag.name }}') {
+                        const cb = document.querySelector('input[value="{{ tag.id }}"]');
+                        if (cb) cb.checked = true;
+                    }
+                    {% endfor %}
+                });
+            }
+            
+            document.getElementById('tagModal').classList.add('show');
+        });
+}
+
+function closeTagModal() {
+    document.getElementById('tagModal').classList.remove('show');
+    currentImageKey = null;
+}
+
+function saveTags() {
+    if (!currentImageKey) return;
+    
+    const checkboxes = document.querySelectorAll('#tagCheckboxList input[type="checkbox"]:checked');
+    const tagIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    tagIds.forEach(id => formData.append('tag_ids', id));
+    
+    fetch('/admin/gallery/image/' + encodeURIComponent(currentImageKey) + '/tags', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('保存失败: ' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        alert('保存失败: ' + error);
+    });
+}
+
+document.getElementById('tagModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeTagModal();
+    }
+});
+
+document.getElementById('imagePreviewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePreviewModal();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,256 @@
+{% extends "admin/base.html" %}
+
+{% block title %}导入文档 - 管理后台{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div class="admin-header-left">
+        <div class="admin-breadcrumb">
+            <a href="/admin/">仪表盘</a>
+            <span>/</span>
+            <a href="{{ url_for('feishu.index') }}">飞书文档导入</a>
+            <span>/</span>
+            <a href="{{ url_for('feishu.documents') }}">文档列表</a>
+            <span>/</span>
+            <span>导入文档</span>
+        </div>
+    </div>
+</div>
+
+<div class="admin-content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">导入飞书文档</h1>
+            <p class="page-subtitle">将飞书文档导入到博客系统</p>
+        </div>
+        <a href="{{ url_for('feishu.documents') }}" class="btn btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            返回文档列表
+        </a>
+    </div>
+
+    {% if existing_doc %}
+    <div class="card" style="margin-bottom: 20px; border-left: 4px solid #ffc107;">
+        <div class="card-body" style="display: flex; align-items: center; gap: 15px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: #ffc107;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <div>
+                <strong>此文档已导入过</strong>
+                <p style="font-size: 13px; color: var(--text-gray); margin-top: 5px;">
+                    上次同步时间：{{ existing_doc.last_sync_at.strftime('%Y-%m-%d %H:%M') if existing_doc.last_sync_at else '未知' }}
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <form method="POST" action="{{ url_for('feishu.import_document', doc_token=doc_token) }}" id="importForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="card-header">
+                <h2 class="card-title">文档信息</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label">文档标题 <span class="required">*</span></label>
+                    <input type="text" name="title" class="form-input" value="{{ doc_title }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">文章分类</label>
+                    <select name="category_id" class="form-select">
+                        <option value="">-- 不选择分类 --</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="form-hint">选择导入文章所属的分类</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">发布状态</label>
+                    <select name="status" class="form-select">
+                        <option value="draft">草稿</option>
+                        <option value="published">立即发布</option>
+                    </select>
+                    <p class="form-hint">选择"草稿"可以在发布前进行编辑</p>
+                </div>
+
+                {% if sheets_info and sheets_info|length > 0 %}
+                <div class="form-group" style="background: #f0f9ff; padding: 20px; border-radius: 8px; border: 1px solid #bae6fd;">
+                    <h4 style="font-size: 14px; margin-bottom: 15px; color: #0369a1; display: flex; align-items: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="3" y1="15" x2="21" y2="15"></line>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                        </svg>
+                        检测到 {{ sheets_info|length }} 个电子表格
+                    </h4>
+                    
+                    {% for sheet in sheets_info %}
+                    <div class="sheet-config" data-sheet-index="{{ sheet.index }}" style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #e0e0e0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <strong style="color: #333;">表格 {{ loop.index }}（{{ sheet.column_count }}列 × {{ sheet.row_count }}行）</strong>
+                                <p style="font-size: 12px; color: #666; margin-top: 4px;">预览：{{ sheet.preview }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="sheet-mode" style="margin-bottom: 10px;">
+                            <label style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                                <input type="radio" name="sheet_mode_{{ sheet.index }}" value="default" checked onchange="toggleSheetConfig({{ sheet.index }})">
+                                <span style="margin-left: 5px;">使用默认值（每列100px）</span>
+                            </label>
+                            <label style="display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer;">
+                                <input type="radio" name="sheet_mode_{{ sheet.index }}" value="equal" onchange="toggleSheetConfig({{ sheet.index }})">
+                                <span style="margin-left: 5px;">自动等分</span>
+                            </label>
+                            <label style="display: inline-flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="sheet_mode_{{ sheet.index }}" value="custom" onchange="toggleSheetConfig({{ sheet.index }})">
+                                <span style="margin-left: 5px;">手动设置</span>
+                            </label>
+                        </div>
+                        
+                        <div id="sheet_config_{{ sheet.index }}" style="display: none; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                            <div style="margin-bottom: 10px;">
+                                <label style="font-size: 13px; color: #666;">总宽度：</label>
+                                <input type="number" name="sheet_total_width_{{ sheet.index }}" value="800" min="200" max="2000" style="width: 80px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;" onchange="updateColumnWidths({{ sheet.index }})">
+                                <span style="font-size: 13px; color: #666;">px</span>
+                            </div>
+                            
+                            <div id="equal_info_{{ sheet.index }}" style="display: none; font-size: 13px; color: #0369a1; margin-bottom: 10px;"></div>
+                            
+                            <div id="custom_config_{{ sheet.index }}" style="display: none;">
+                                <label style="font-size: 13px; color: #666; display: block; margin-bottom: 5px;">列宽设置：</label>
+                                <div id="column_inputs_{{ sheet.index }}" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                                <p id="width_summary_{{ sheet.index }}" style="font-size: 12px; color: #666; margin-top: 5px;"></p>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" name="sheet_column_count_{{ sheet.index }}" value="{{ sheet.column_count }}">
+                        <input type="hidden" name="sheet_column_widths_{{ sheet.index }}" id="sheet_column_widths_{{ sheet.index }}" value="">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div style="background: var(--bg-light); padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <h4 style="font-size: 14px; margin-bottom: 10px; color: var(--text-dark);">导入说明</h4>
+                    <ul style="color: var(--text-gray); font-size: 13px; line-height: 1.8; padding-left: 20px;">
+                        <li>文档内容将被转换为Markdown格式</li>
+                        <li>文档中的图片将自动上传到腾讯云COS</li>
+                        <li>支持保留多图同行、图文块同行等特殊格式</li>
+                        <li>导入后可以在文章编辑页面继续修改</li>
+                    </ul>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <button type="submit" class="btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        {% if existing_doc %}重新导入{% else %}开始导入{% endif %}
+                    </button>
+                    <a href="{{ url_for('feishu.documents') }}" class="btn btn-outline">取消</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 表格配置数据
+const sheetsData = {{ sheets_info | tojson | safe }};
+
+function toggleSheetConfig(sheetIndex) {
+    const mode = document.querySelector(`input[name="sheet_mode_${sheetIndex}"]:checked`).value;
+    const configDiv = document.getElementById(`sheet_config_${sheetIndex}`);
+    const equalInfo = document.getElementById(`equal_info_${sheetIndex}`);
+    const customConfig = document.getElementById(`custom_config_${sheetIndex}`);
+    
+    if (mode === 'default') {
+        configDiv.style.display = 'none';
+        document.getElementById(`sheet_column_widths_${sheetIndex}`).value = '';
+    } else {
+        configDiv.style.display = 'block';
+        
+        if (mode === 'equal') {
+            equalInfo.style.display = 'block';
+            customConfig.style.display = 'none';
+            updateColumnWidths(sheetIndex);
+        } else {
+            equalInfo.style.display = 'none';
+            customConfig.style.display = 'block';
+            initCustomInputs(sheetIndex);
+        }
+    }
+}
+
+function updateColumnWidths(sheetIndex) {
+    const sheet = sheetsData[sheetIndex];
+    const totalWidth = parseInt(document.querySelector(`input[name="sheet_total_width_${sheetIndex}"]`).value) || 800;
+    const columnCount = sheet.column_count || 1;
+    const equalWidth = Math.floor(totalWidth / columnCount);
+    
+    const equalInfo = document.getElementById(`equal_info_${sheetIndex}`);
+    equalInfo.textContent = `每列宽度：${equalWidth}px`;
+    
+    // 更新隐藏字段
+    const widths = Array(columnCount).fill(equalWidth);
+    document.getElementById(`sheet_column_widths_${sheetIndex}`).value = widths.join(',');
+}
+
+function initCustomInputs(sheetIndex) {
+    const sheet = sheetsData[sheetIndex];
+    const columnCount = sheet.column_count || 1;
+    const container = document.getElementById(`column_inputs_${sheetIndex}`);
+    
+    if (container.children.length === 0) {
+        for (let i = 0; i < columnCount; i++) {
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = 100;
+            input.min = 20;
+            input.max = 500;
+            input.style = 'width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;';
+            input.placeholder = `列${i + 1}`;
+            input.oninput = () => updateCustomSummary(sheetIndex);
+            container.appendChild(input);
+        }
+    }
+    updateCustomSummary(sheetIndex);
+}
+
+function updateCustomSummary(sheetIndex) {
+    const container = document.getElementById(`column_inputs_${sheetIndex}`);
+    const inputs = container.querySelectorAll('input');
+    const widths = Array.from(inputs).map(input => parseInt(input.value) || 100);
+    const total = widths.reduce((a, b) => a + b, 0);
+    
+    const summary = document.getElementById(`width_summary_${sheetIndex}`);
+    summary.textContent = `总宽度：${total}px`;
+    summary.style.color = total > 1200 ? '#dc2626' : '#666';
+    
+    document.getElementById(`sheet_column_widths_${sheetIndex}`).value = widths.join(',');
+}
+
+// 表单提交前收集配置
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    sheetsData.forEach((sheet, index) => {
+        const mode = document.querySelector(`input[name="sheet_mode_${index}"]:checked`);
+        if (mode && mode.value === 'equal') {
+            updateColumnWidths(index);
+        }
+    });
+});
+</script>
+{% endblock %}
