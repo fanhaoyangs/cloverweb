@@ -1670,5 +1670,13 @@ npm run build   # 验证 manualChunks 修正后 OK
   - **路由守卫**：/admin requiresAuth → 未登录跳 /admin/login；已登录访问登录页直达后台
   - **首页资讯卡片接线**：`SitePageView.vue` 渲染 home 后请求 `/api/articles/?section=home_news`，文章卡片前插静态 HTML 的 `.review-grid`（复用 review-card 样式，title 转义防 XSS）
   - **验证**：后端接口 9 项 PASS（401/登录/建分类/建文章含 tags+published_at 自动/section 过滤/PATCH/静态页 PUT/DELETE）；浏览器 E2E 10 步全 PASS（登录→建文→列表→首页卡片→详情→静态页编辑器）
+- ✅ Phase 2 第 5 步已完成（2026-08-18）：**CVM 部署配置**
+  - **`.github/workflows/deploy.yml`**：push main（backend/web/deploy 路径触发）+ workflow_dispatch；CI 内 node20 构建 web → dist 自检（index.html + UEditorPlus/）→ 打包（backend 源码排除 venv/.env/db.sqlite3/staticfiles + web/dist）→ scp 单 tar → ssh 免密 sudo 执行 deploy.sh → health check（gunicorn :8000 + systemctl is-active，带 Host 头）
+  - **`deploy/deploy.sh`**（CVM 每次部署）：停服 → web 全量 rsync --delete（清旧 hash 产物）/ backend rsync 保留 venv+.env+staticfiles+media → pip install → 子 shell 内 source .env 后 migrate + collectstatic（规避 sudo env_reset）→ 重启
+  - **`deploy/setup-server.sh`**（一次性初始化，9 步）：PGDG 装 PostgreSQL 16 + 2C2G 保守参数（shared_buffers 256MB/max_connections 60）→ 建 cloverweb 用户/目录/venv → 生成 backend/.env（随机 SECRET_KEY，DB 凭证）→ systemd + Nginx 启用 → certbot 签证书；另建 cloverweb-deploy CI 用户 + sudoers 白名单（仅 NOPASSWD deploy.sh）
+  - **`deploy/systemd/cloverweb.service`**：gunicorn 2 workers × 2 threads @127.0.0.1:8000，EnvironmentFile=.env，MemoryMax 768M，ProtectSystem=full
+  - **`deploy/nginx/cloverweb.conf`**：80 端口初版（certbot 自动升级 443）；`try_files $uri /index.html`（history 路由）；/assets/ 30d immutable；/api/ 反代 gunicorn（client_max_body_size 220m 供 UEditor 视频）；/static/ alias collectstatic；/django-admin/；gzip
+  - **验证**：bash -n 全过、workflow YAML ruby 解析 OK、CI 打包本地演练（backend 91 + web 321 文件、0 敏感文件泄漏、UEditorPlus 在 dist）
+  - **待用户操作**：①CVM 上跑 setup-server.sh（export DB_PASS/CERTBOT_EMAIL）②GitHub 仓库配 Secrets（SSH_HOST/SSH_USER=cloverweb-deploy/SSH_PRIVATE_KEY，可选 SSH_PORT）③CVM .env 补 COS 凭证 ④首次部署后验证 https://communitygarden.org.cn
 
 C 类（XSS sanitize、SQLite 起步、settings 拆分、middleware 优先级）和 D 类（备份 sudoers、/media 冗余、域名备案、axios 已存在、django-admin 路由实现）保留到执行时处理。

@@ -1,0 +1,30 @@
+[Unit]
+Description=CloverWeb Django (gunicorn)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=notify
+User=cloverweb
+Group=cloverweb
+WorkingDirectory=/opt/cloverweb/backend
+EnvironmentFile=/opt/cloverweb/backend/.env
+ExecStart=/opt/cloverweb/backend/venv/bin/gunicorn cloverweb.wsgi:application \
+  --workers 2 \
+  --threads 2 \
+  --bind 127.0.0.1:8000 \
+  --access-logfile - \
+  --error-logfile -
+Restart=on-failure
+RestartSec=3
+
+# 2C2G 内存保护
+MemoryMax=768M
+
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/opt/cloverweb/backend/staticfiles /opt/cloverweb/backend/media
+
+[Install]
+WantedBy=multi-user.target
