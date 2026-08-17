@@ -21,7 +21,8 @@ class ArticleListView(generics.ListAPIView):
             qs = qs.filter(is_featured=True)
         section = self.request.query_params.get('section')
         if section:
-            qs = qs.filter(website_sections__contains=section)
+            # icontains 跨库通用（JSONField contains 仅 PG 支持）
+            qs = qs.filter(website_sections__icontains=section)
         return qs
 
 

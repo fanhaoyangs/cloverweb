@@ -1663,5 +1663,12 @@ npm run build   # 验证 manualChunks 修正后 OK
   - **前端**：`content-editor/UEditor.vue` 去 `@/cloud` 依赖，`serverUrl: '/api/ueditor/'`，秀米图片转存改批量 POST 后端 `catchimage`（source[] 数组，带去重缓存）；删除旧 `getActionUrl` hook
   - **清理**：删 `web/src/cloud.js`、旧版 `web/src/components/UEditor.vue`、`web/src/utils/cos-upload.js`、`web/src/middlewares/ueditor.js`（dev 改走 vite proxy → Django）、`web/api/`（旧 node 上传）、`web/.env`（仅含 CloudBase ID）；`package.json` 删 `@cloudbase/js-sdk` + `@cloudbase/framework-plugin-website`；`vite.config.js` 重写（去 ueditorMiddleware/CloudBase define，补回 manualChunks 三 vendor）
   - **验证**：Django 接口测试 PASS（config 200 / listimage 200 / 未知 action FAIL / 非法扩展名拒绝 / 无 COS 凭证明确报错）；vite build 2.63s（vue/element/axios 三 chunk）；vite proxy 端到端 curl PASS
+- ✅ Phase 2 第 4 步已完成（2026-08-18）：**CMS 后台前端 + 管理端 API**
+  - **后端管理 API**：`content/admin_serializers.py`（ArticleAdminSerializer：category 按 slug、tags 名称列表自动 get_or_create、author 自动取当前用户；SitePageAdminSerializer）+ `content/admin_views.py`（/api/admin/articles/ CRUD、categories、sitepages，IsAdminUser 权限）+ `auth/token/`（simplejwt 密码换 JWT，dev 期/备用）
+  - **bug 修复**：公开列表 `website_sections__contains` 在 SQLite 不支持（JSONField contains 仅 PG）→ 改 `icontains` 跨库通用
+  - **前端 CMS**：`utils/auth.js`（JWT 存 localStorage）+ `request.js`（Bearer 拦截器，仅 /admin/* 401 强制重登）；`api/admin.js`；`CmsLayout.vue`（侧边栏布局）；`admin/Login.vue`（el-tabs 飞书/密码双模式）、`LoginCallback.vue`（一次性 code 换 JWT）、`ArticleList.vue`（筛选/搜索/发布撤回/精选开关/删除）、`ArticleEdit.vue`（集成 UEditorPlus，板块挂载 home_news）、`SitePageEdit.vue`（三静态页 UEditor 编辑）
+  - **路由守卫**：/admin requiresAuth → 未登录跳 /admin/login；已登录访问登录页直达后台
+  - **首页资讯卡片接线**：`SitePageView.vue` 渲染 home 后请求 `/api/articles/?section=home_news`，文章卡片前插静态 HTML 的 `.review-grid`（复用 review-card 样式，title 转义防 XSS）
+  - **验证**：后端接口 9 项 PASS（401/登录/建分类/建文章含 tags+published_at 自动/section 过滤/PATCH/静态页 PUT/DELETE）；浏览器 E2E 10 步全 PASS（登录→建文→列表→首页卡片→详情→静态页编辑器）
 
 C 类（XSS sanitize、SQLite 起步、settings 拆分、middleware 优先级）和 D 类（备份 sudoers、/media 冗余、域名备案、axios 已存在、django-admin 路由实现）保留到执行时处理。
