@@ -43,7 +43,7 @@
 
         <div
           v-for="item in filteredList"
-          :key="item._id"
+          :key="item.slug"
           class="post-card"
           :class="{ 'no-image': !item.coverImage }"
           @click="handleClick(item)"
@@ -75,14 +75,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { listArticles, getCategoryLabel, CATEGORIES } from '@/api/article'
-import cloudBase from '@/cloud'
+import { listArticles, CATEGORIES } from '@/api/article'
 
 const router = useRouter()
 
 const loading = ref(false)
 const articles = ref([])
-const activities = ref([])
 const activeTab = ref('all')
 const searchKeyword = ref('')
 const articlePage = ref(1)
@@ -91,32 +89,14 @@ const hasMore = ref(false)
 const tabs = computed(() => {
   const base = [{ value: 'all', label: '全部' }]
   const cats = CATEGORIES.map(c => ({ value: c.value, label: c.label }))
-  return [...base, ...cats, { value: 'activity', label: '活动' }]
+  return [...base, ...cats]
 })
 
 const filteredList = computed(() => {
-  let list = [
-    ...articles.value.map(a => ({
-      ...a,
-      itemType: 'article',
-      categoryLabel: getCategoryLabel(a.category),
-      sortTime: a.publishedAt || a.createTime
-    })),
-    ...activities.value.map(a => ({
-      ...a,
-      itemType: 'activity',
-      categoryLabel: '活动',
-      sortTime: a.createTime,
-      excerpt: a.location || ''
-    }))
-  ]
+  let list = [...articles.value]
 
   if (activeTab.value !== 'all') {
-    if (activeTab.value === 'activity') {
-      list = list.filter(i => i.itemType === 'activity')
-    } else {
-      list = list.filter(i => i.itemType === 'article' && i.category === activeTab.value)
-    }
+    list = list.filter(i => i.category === activeTab.value)
   }
 
   if (searchKeyword.value.trim()) {
@@ -127,7 +107,7 @@ const filteredList = computed(() => {
     )
   }
 
-  list.sort((a, b) => b.sortTime - a.sortTime)
+  list.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
   return list
 })
 
@@ -139,13 +119,7 @@ function handleSearch() {
 }
 
 function handleClick(item) {
-  if (item.itemType === 'activity') {
-    router.push(`/activity/${item._id}`)
-  } else if (item.externalUrl) {
-    window.open(item.externalUrl, '_blank')
-  } else {
-    router.push(`/news/${item._id}`)
-  }
+  router.push(`/news/${item.slug}`)
 }
 
 async function loadArticles() {
@@ -171,36 +145,19 @@ async function loadArticles() {
   }
 }
 
-async function loadActivities() {
-  try {
-    await cloudBase.init()
-    const db = cloudBase.getDatabase()
-    const res = await db.collection('activities')
-      .where({ status: 'active' })
-      .orderBy('createTime', 'desc')
-      .limit(20)
-      .field({ title: true, coverImage: true, location: true, createTime: true })
-      .get()
-    activities.value = res.data || []
-  } catch (e) {
-    console.error('加载活动失败', e)
-  }
-}
-
-function loadMore() {
+async function loadMore() {
   articlePage.value++
-  loadArticles()
+  await loadArticles()
 }
 
-function formatDate(timestamp) {
-  if (!timestamp) return ''
-  const d = new Date(timestamp)
+function formatDate(value) {
+  if (!value) return ''
+  const d = new Date(value)
   return d.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 onMounted(() => {
   loadArticles()
-  loadActivities()
 })
 </script>
 

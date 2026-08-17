@@ -1651,6 +1651,12 @@ npm run build   # 验证 manualChunks 修正后 OK
 ## 十二、v3.2 执行日志
 
 - ✅ Phase 2 第 1 步已完成（2026-08-17）：`web-admin/` → `web/` 重命名；`backend/` Django 5 骨架 + 6 app + settings 三层结构 + 全部模型 + 飞书 OAuth 框架 + content 公开 API；`makemigrations`/`migrate`（SQLite dev）通过；superuser 已建（admin / clover2026web，建议尽快改密）；`web/` build 通过（4.03s）。
-- 执行中修正：`psycopg2-binary` 升 2.9.10（2.9.9 无 Python 3.13 wheel）；6 个 `apps.py` 的 `name` 补 `apps.` 前缀；`ArticleDetailView.retrieve` 递归 bug 修复。
+- ✅ Phase 2 第 2 步已完成（2026-08-17）：
+  - **git 仓库**：web 旧历史打包至 `.trae/web-history-legacy.bundle` 后并入根仓库（baseline `3cfe977`）；根目录 `git init -b main` + `.gitignore`
+  - **B1 路由**：`createWebHashHistory` → `createWebHistory` + `scrollBehavior`
+  - **前端接线**：新增 `src/utils/request.js`（axios，baseURL=/api）+ `src/api/sitepage.js`；`src/api/article.js` 重写为 Django 版（snake_case→camelCase 映射、分页 list/total、slug 详情、浏览量后端自增）；`NewsList.vue` 剥离小程序 activities 混排；`ArticleDetail.vue` 改 slug；vite proxy `/api`→127.0.0.1:8000
+  - **静态页迁移**：`seed_sitepages` 管理命令（tinycss2 做 CSS scope 变换，`*`/`:root`/`body` 特判，@media 递归，@keyframes/@font-face 保留）；三页写入 SitePage（home 12.6k / about 27k / philosophy 16.9k 字符，0 选择器泄漏）；旧 HomePage/AboutPage/PhilosophyPage 删除，新 `SitePageView.vue` 统一渲染
+  - **验证**：API 200 ×4；vite build 2.94s；浏览器实测四页渲染 PASS（绿色主题/卡片/导航/页脚正常，外链图片 ORB 拦截为 CDN 跨域问题，非迁移缺陷）
+- 待办遗留：`src/cloud.js` + UEditor 组件仍引用 `@cloudbase/js-sdk`（Phase 2.3 接 Django 上传时一并删除）；C 类 XSS sanitize 待 BBS 上线前处理
 
 C 类（XSS sanitize、SQLite 起步、settings 拆分、middleware 优先级）和 D 类（备份 sudoers、/media 冗余、域名备案、axios 已存在、django-admin 路由实现）保留到执行时处理。

@@ -48,7 +48,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getArticleById, incrementView, getCategoryLabel } from '@/api/article'
+import { getArticleBySlug, getCategoryLabel } from '@/api/article'
 
 const route = useRoute()
 const loading = ref(true)
@@ -63,10 +63,12 @@ function formatDate(timestamp) {
 async function loadArticle() {
   loading.value = true
   try {
-    const res = await getArticleById(route.params.id)
+    const res = await getArticleBySlug(route.params.slug)
     if (res.code === 0 && res.data) {
       article.value = res.data
-      incrementView(route.params.id).catch(() => {})
+      if (res.data.title) {
+        document.title = `${res.data.title} - 花开中国`
+      }
     }
   } catch (e) {
     console.error('加载文章失败', e)

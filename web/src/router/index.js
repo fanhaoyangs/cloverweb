@@ -1,20 +1,24 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import SitePageView from '@/views/SitePageView.vue'
 
 const publicRoutes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/HomePage.vue')
+    component: SitePageView,
+    props: { slug: 'home' }
   },
   {
     path: '/about',
     name: 'About',
-    component: () => import('@/views/AboutPage.vue')
+    component: SitePageView,
+    props: { slug: 'about' }
   },
   {
     path: '/philosophy',
     name: 'Philosophy',
-    component: () => import('@/views/PhilosophyPage.vue')
+    component: SitePageView,
+    props: { slug: 'philosophy' }
   },
   {
     path: '/news',
@@ -22,15 +26,19 @@ const publicRoutes = [
     component: () => import('@/views/NewsList.vue')
   },
   {
-    path: '/news/:id',
+    path: '/news/:slug',
     name: 'ArticleDetail',
     component: () => import('@/views/ArticleDetail.vue')
   }
 ]
 
 const router = createRouter({
-  history: createWebHashHistory(),
-  routes: publicRoutes
+  // history 模式（SEO 友好），Nginx 需配 try_files 回退 index.html
+  history: createWebHistory(),
+  routes: publicRoutes,
+  scrollBehavior() {
+    return { top: 0 }
+  }
 })
 
 export default router
