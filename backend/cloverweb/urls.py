@@ -12,6 +12,7 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
     # API
     path('api/auth/', include('apps.auth_custom.urls')),
+    path('api/ueditor/', include('apps.common.urls')),
     path('api/', include('apps.content.urls')),
 ]
 

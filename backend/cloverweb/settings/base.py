@@ -7,7 +7,12 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# 加载 backend/.env（存在时；敏感凭证不进 git）
+load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-insecure-key-change-me')
 DEBUG = False

@@ -4,7 +4,6 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import cloudBase from '@/cloud'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -21,7 +20,7 @@ let editor = null
 const defaultConfig = {
   UEDITOR_HOME_URL: '/UEditorPlus/',
   UEDITOR_CORS_URL: '/UEditorPlus/',
-  serverUrl: '',
+  serverUrl: '/api/ueditor/',
   autoHeightEnabled: false,
   initialFrameHeight: props.height,
   initialFrameWidth: '100%',
@@ -63,41 +62,31 @@ let catchImageTimer = null
 let isReplacingImages = false
 const uploadedImageCache = {}
 
-async function uploadToCos(imageUrl) {
-  const cacheKey = imageUrl.split('?')[0]
-  if (uploadedImageCache[cacheKey]) {
-    console.log('[UEditor] 图片已缓存，跳过上传:', cacheKey)
-    return uploadedImageCache[cacheKey]
+// 批量转存远程图片（秀米等）到 COS：走 Django /api/ueditor/?action=catchimage
+async function transferRemoteImages(urls) {
+  const pending = [...urls].filter(u => !uploadedImageCache[u.split('?')[0]])
+  if (pending.length === 0) return {}
+
+  const params = new URLSearchParams()
+  pending.forEach(u => params.append('source[]', u))
+
+  const res = await fetch('/api/ueditor/?action=catchimage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: params.toString()
+  })
+  const data = await res.json()
+  if (data.state !== 'SUCCESS') {
+    throw new Error(data.message || '远程图片转存失败')
   }
 
-  try {
-    await cloudBase.init()
-
-    const res = await cloudBase.callFunction({
-      name: 'getPresignedUrl',
-      data: {
-        action: 'proxyUploadImage',
-        imageUrl: imageUrl
-      }
-    })
-
-    if (res.result.errCode !== 0) {
-      throw new Error(res.result.errMsg || '代理上传失败')
-    }
-
-    const fileUrl = res.result.fileUrl
-    let processedFileUrl = fileUrl
-    if (processedFileUrl && !processedFileUrl.startsWith('http://') && !processedFileUrl.startsWith('https://')) {
-      processedFileUrl = `https://${processedFileUrl}`
-    }
-
-    uploadedImageCache[cacheKey] = processedFileUrl
-    console.log('[UEditor] 代理上传成功:', processedFileUrl)
-    return processedFileUrl
-  } catch (error) {
-    console.error('[UEditor] 代理上传错误:', error)
-    return null
-  }
+  const urlMap = {}
+  data.list.forEach(item => {
+    urlMap[item.source] = item.url
+    uploadedImageCache[item.source.split('?')[0]] = item.url
+  })
+  console.log(`[UEditor] 转存成功 ${data.list.length}/${pending.length} 张`)
+  return urlMap
 }
 
 async function replaceRemoteImages() {
@@ -132,21 +121,16 @@ async function replaceRemoteImages() {
 
   console.log(`[UEditor] 检测到 ${urls.size} 个秀米图片URL，开始替换...`)
 
-  const urlMap = {}
-  let processedCount = 0
-  let i = 0
-  for (const url of urls) {
-    i++
-    console.log(`[UEditor] 正在上传第 ${i} 张图片: ${url}`)
-    const newUrl = await uploadToCos(url)
-    if (newUrl) {
-      urlMap[url] = newUrl
-      processedCount++
-      console.log(`[UEditor] 第 ${i} 张图片替换成功: ${newUrl}`)
-    } else {
-      console.error(`[UEditor] 第 ${i} 张图片替换失败`)
-    }
+  let urlMap = {}
+  try {
+    urlMap = await transferRemoteImages(urls)
+  } catch (error) {
+    console.error('[UEditor] 远程图片转存失败:', error)
+    isReplacingImages = false
+    return
   }
+
+  const processedCount = Object.keys(urlMap).length
 
   if (processedCount > 0) {
     let newContent = content
@@ -210,8 +194,6 @@ function initEditor() {
     if (props.modelValue) {
       editor.setContent(props.modelValue)
     }
-
-    hookEditorActions()
   })
 
   editor.addListener('contentChange', () => {
@@ -222,20 +204,6 @@ function initEditor() {
       triggerCatchRemoteImage()
     }
   })
-}
-
-function hookEditorActions() {
-  if (!editor || !editor.getOpt) return
-
-  editor.getActionUrl = function(actionName) {
-    if (actionName === 'uploadimage') {
-      return '/api/ueditor/upload'
-    }
-    if (actionName === 'listimage') {
-      return '/api/ueditor/listimage'
-    }
-    return window.UE.getEditor(editorId).getActionUrl.call(this, actionName)
-  }
 }
 
 function loadUEditor() {

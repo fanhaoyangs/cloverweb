@@ -1657,6 +1657,11 @@ npm run build   # 验证 manualChunks 修正后 OK
   - **前端接线**：新增 `src/utils/request.js`（axios，baseURL=/api）+ `src/api/sitepage.js`；`src/api/article.js` 重写为 Django 版（snake_case→camelCase 映射、分页 list/total、slug 详情、浏览量后端自增）；`NewsList.vue` 剥离小程序 activities 混排；`ArticleDetail.vue` 改 slug；vite proxy `/api`→127.0.0.1:8000
   - **静态页迁移**：`seed_sitepages` 管理命令（tinycss2 做 CSS scope 变换，`*`/`:root`/`body` 特判，@media 递归，@keyframes/@font-face 保留）；三页写入 SitePage（home 12.6k / about 27k / philosophy 16.9k 字符，0 选择器泄漏）；旧 HomePage/AboutPage/PhilosophyPage 删除，新 `SitePageView.vue` 统一渲染
   - **验证**：API 200 ×4；vite build 2.94s；浏览器实测四页渲染 PASS（绿色主题/卡片/导航/页脚正常，外链图片 ORB 拦截为 CDN 跨域问题，非迁移缺陷）
-- 待办遗留：`src/cloud.js` + UEditor 组件仍引用 `@cloudbase/js-sdk`（Phase 2.3 接 Django 上传时一并删除）；C 类 XSS sanitize 待 BBS 上线前处理
+- 待办遗留：C 类 XSS sanitize 待 BBS 上线前处理
+- ✅ Phase 2 第 3 步已完成（2026-08-18）：**UEditorPlus 接 Django**
+  - **后端**：`apps/common/cos.py`（COS 直传工具，凭证缺失抛 `CosNotConfigured`）+ `views_ueditor.py`（统一入口 `/api/ueditor/?action=`：config / uploadimage / uploadvideo / uploadfile / catchimage / listimage，`csrf_exempt`，上传记录入 `UploadedFile` 表）+ `urls.py` 注册；`settings/base.py` 加 `load_dotenv`；新增 `backend/.env.example`（COS 凭证模板，**待用户填写 COS_SECRET_ID/KEY/BUCKET 后上传才可用**）
+  - **前端**：`content-editor/UEditor.vue` 去 `@/cloud` 依赖，`serverUrl: '/api/ueditor/'`，秀米图片转存改批量 POST 后端 `catchimage`（source[] 数组，带去重缓存）；删除旧 `getActionUrl` hook
+  - **清理**：删 `web/src/cloud.js`、旧版 `web/src/components/UEditor.vue`、`web/src/utils/cos-upload.js`、`web/src/middlewares/ueditor.js`（dev 改走 vite proxy → Django）、`web/api/`（旧 node 上传）、`web/.env`（仅含 CloudBase ID）；`package.json` 删 `@cloudbase/js-sdk` + `@cloudbase/framework-plugin-website`；`vite.config.js` 重写（去 ueditorMiddleware/CloudBase define，补回 manualChunks 三 vendor）
+  - **验证**：Django 接口测试 PASS（config 200 / listimage 200 / 未知 action FAIL / 非法扩展名拒绝 / 无 COS 凭证明确报错）；vite build 2.63s（vue/element/axios 三 chunk）；vite proxy 端到端 curl PASS
 
 C 类（XSS sanitize、SQLite 起步、settings 拆分、middleware 优先级）和 D 类（备份 sudoers、/media 冗余、域名备案、axios 已存在、django-admin 路由实现）保留到执行时处理。
