@@ -39,6 +39,10 @@ echo "==> 包管理器: $PKG / 宝塔: $BT_PANEL"
 
 # ---- 1. 系统基础依赖 ----
 echo "==> [1/9] 系统基础依赖"
+# 清理上次的 dnf 脏缓存/锁（之前失败留下的）
+rm -f /var/run/dnf.pid 2>/dev/null || true
+dnf clean all -q 2>/dev/null || true
+
 case $PKG in
   apt)
     apt-get update -qq
@@ -46,14 +50,20 @@ case $PKG in
       python3 python3-venv python3-pip
     ;;
   dnf)
-    dnf install -y -q curl rsync ca-certificates gnupg \
-      python3 python3-pip
-    # 尝试启用 python3.11 module（OpenCloudOS 8/9 都支持）
-    dnf module -y enable python311 2>/dev/null || dnf module -y switch-to python311 2>/dev/null || true
-    # venv 包名按 Python 主版本动态探测（OCL9 + Python 3.11 → python3.11-venv）
+    dnf install -y -q curl rsync ca-certificates gnupg python3 python3-pip
+    # 探测 venv 包名（OCL9 + Python 3.11 → python3.11-venv）
     PY_MM=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "3.11")
-    dnf install -y -q "python${PY_MM}-venv" 2>/dev/null || dnf install -y -q python3-venv 2>/dev/null || \
-      { echo "    ⚠ python3-venv 安装失败，尝试 ensurepip 方式"; python3 -m ensurepip --upgrade 2>/dev/null || true; }
+    echo "    探测 venv 包: python${PY_MM}-venv"
+    dnf install -y -q "python${PY_MM}-venv" 2>&1 | tail -5 || \
+      { echo "    ⚠ python${PY_MM}-venv 装失败，尝试 crb/powertools 仓库"; \
+        dnf config-manager --enable crb 2>/dev/null || dnf config-manager --enable powertools 2>/dev/null || true; \
+        dnf install -y -q "python${PY_MM}-venv" 2>&1 | tail -3 || true; }
+    # 兜底：直接试 venv 模块能不能用
+    if python3 -m venv --help >/dev/null 2>&1; then
+      echo "    ✓ venv 模块就绪"
+    else
+      echo "    ⚠ venv 模块仍不可用，后续会用 ensurepip 兜底"
+    fi
     ;;
 esac
 
