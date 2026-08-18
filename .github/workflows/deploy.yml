@@ -1,0 +1,138 @@
+name: Deploy CloverWeb to CVM
+
+on:
+  push:
+    branches: [main]
+    # 排除文档 / 笔记 / 数据变更目录，避免频繁触发
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '**.log'
+  workflow_dispatch:  # 允许手动触发
+
+# 防止旧部署并发覆盖
+concurrency:
+  group: deploy-cloverweb
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          # 重要：不递归拉 submodules（如果以后加）
+          submodules: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend (Vite)
+        working-directory: web
+        # Vite 默认把 public/ 复制到 dist/ 根，所以 dist/UEditorPlus/ 会自动出现
+        run: npm run build
+        env:
+          # 构建时的环境变量（如果 Vite 用 import.meta.env 需要可放这里）
+          NODE_ENV: production
+
+      - name: Verify dist
+        run: |
+          test -f web/dist/index.html || { echo "ERROR: web/dist/index.html 不存在"; exit 1; }
+          echo "  dist 内容："
+          ls -la web/dist/ | head -20
+          echo "  产物大小：$(du -sh web/dist | cut -f1)"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Stage artifacts
+        run: |
+          set -e
+          STAGE=_stage
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/web" "$STAGE/backend"
+
+          # 1) 前端产物：把 dist 内容（index.html、assets/、UEditorPlus/）平铺到 web/
+          #    deploy.sh 期望 $STAGE/web/ 就是要放到 /opt/cloverweb/web/ 的最终内容
+          cp -r web/dist/. "$STAGE/web/"
+          echo "  staged web/ 前 10 项："
+          ls -A "$STAGE/web" | head -10
+
+          # 2) 后端：排除 venv / .env / db.sqlite3 / staticfiles / media
+          #    staticfiles / media 在 CVM 上 collectstatic 现场生成
+          rsync -a \
+            --exclude 'venv/' \
+            --exclude '.env' \
+            --exclude 'db.sqlite3' \
+            --exclude 'staticfiles/' \
+            --exclude 'media/' \
+            --exclude '__pycache__/' \
+            --exclude '*.pyc' \
+            --exclude '.pytest_cache/' \
+            backend/ "$STAGE/backend/"
+
+          # 3) 部署脚本（部署时也要带过去，覆盖 CVM 旧版）
+          mkdir -p "$STAGE/deploy"
+          cp deploy/deploy.sh "$STAGE/deploy/"
+          cp deploy/nginx/cloverweb.conf "$STAGE/deploy/" 2>/dev/null || true
+          cp deploy/systemd/cloverweb.service "$STAGE/deploy/" 2>/dev/null || true
+
+          # 4) 打 tarball
+          tar -czf cloverweb-deploy.tar.gz -C "$STAGE" .
+          echo "==> tarball 大小：$(du -sh cloverweb-deploy.tar.gz | cut -f1)"
+
+      - name: SCP tarball to CVM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.CLOVERWEB_HOST }}
+          username: ${{ secrets.CLOVERWEB_USER }}
+          key: ${{ secrets.CLOVERWEB_SSH_KEY }}
+          port: ${{ secrets.CLOVERWEB_PORT || 22 }}
+          source: cloverweb-deploy.tar.gz
+          target: /tmp
+
+      - name: Run deploy.sh on CVM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.CLOVERWEB_HOST }}
+          username: ${{ secrets.CLOVERWEB_USER }}
+          key: ${{ secrets.CLOVERWEB_SSH_KEY }}
+          port: ${{ secrets.CLOVERWEB_PORT || 22 }}
+          # 关键：cloverweb-deploy 是受限 sudo 用户，只能跑 deploy.sh
+          script: |
+            sudo bash /opt/cloverweb/deploy/deploy.sh /tmp/cloverweb-deploy.tar.gz
+
+      - name: Smoke test
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.CLOVERWEB_HOST }}
+          username: ${{ secrets.CLOVERWEB_USER }}
+          key: ${{ secrets.CLOVERWEB_SSH_KEY }}
+          port: ${{ secrets.CLOVERWEB_PORT || 22 }}
+          script: |
+            echo "=== /api/articles/ ==="
+            curl -sS -o /dev/null -w "HTTP %{http_code}\n" -H "Host: communitygarden.org.cn" https://127.0.0.1/api/articles/ -k
+            echo "=== / (前端) ==="
+            curl -sS -o /dev/null -w "HTTP %{http_code} / 大小 %{size_download}\n" -H "Host: communitygarden.org.cn" https://127.0.0.1/ -k
+            echo "=== /django-admin/login/ ==="
+            curl -sS -o /dev/null -w "HTTP %{http_code}\n" -H "Host: communitygarden.org.cn" https://127.0.0.1/django-admin/login/ -k
+            echo "=== service 状态 ==="
+            systemctl is-active cloverweb
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf _stage cloverweb-deploy.tar.gz
