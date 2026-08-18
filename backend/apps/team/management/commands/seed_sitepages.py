@@ -148,11 +148,12 @@ class Command(BaseCommand):
             global_css, content, inline_styles = extract(html)
 
             scope = f'.sitepage-{slug}'
+            scope_class = f'sitepage-{slug}'  # class 属性不能用点号
             all_css = global_css + '\n' + '\n'.join(inline_styles)
             scoped = FONT_IMPORT + '\n' + scope_css(all_css, scope)
 
             content_html = (
-                f'<div class="sitepage {scope}">\n{content}\n</div>\n'
+                f'<div class="sitepage {scope_class}">\n{content}\n</div>\n'
                 f'<style>\n{scoped}\n</style>'
             )
 
