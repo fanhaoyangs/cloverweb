@@ -75,19 +75,17 @@ rm -f /var/run/dnf.pid 2>/dev/null || true
 dnf clean all -q 2>/dev/null || true
 
 # 宝塔面板场景：PG 已装，跳过 dnf 装包，自动探测宝塔路径
-if [[ "${BT_PANEL:-false}" == "true" ]] && command -v pg_isready >/dev/null 2>&1; then
-  # 探测宝塔 PG 路径
-  BT_PG_BASE=""
-  for p in /www/server/pgsql /www/server/postgresql /usr/pgsql-16; do
-    [[ -d $p/bin && -x $p/bin/pg_isready ]] && BT_PG_BASE=$p && break
-  done
-  if [[ -z $BT_PG_BASE ]]; then
-    BT_PG_BASE=$(dirname $(dirname $(readlink -f $(which pg_isready))))
-  fi
-  echo "    ✓ 宝塔已装 PG（探测到 base: $BT_PG_BASE，跳过 dnf 装包）"
-  PG_DATA=$(sudo -u postgres psql -tAc "SHOW data_directory;" 2>/dev/null || echo "/www/server/pgsql/data")
+# 关键：宝塔把 PG 装在 /www/server/pgsql/ 但不加入系统 PATH，所以必须直接检查这个目录
+if [[ "${BT_PANEL:-false}" == "true" ]] && [[ -x /www/server/pgsql/bin/psql ]]; then
+  BT_PG_BASE=/www/server/pgsql
   PG_BIN=$BT_PG_BASE/bin
-  PG_CONF_DIR=$PG_DATA
+  # 把宝塔 PG 路径加到 PATH，后续命令才能找到
+  export PATH=$PG_BIN:$PATH
+  # 数据目录（从 postgresql.conf 解析或用默认）
+  PG_DATA=$BT_PG_BASE/data
+  [[ -f $PG_DATA/PG_VERSION ]] || PG_DATA=$BT_PG_BASE/16/data
+  [[ -f $PG_DATA/PG_VERSION ]] || { err "宝塔 PG 数据目录找不到（尝试过 $BT_PG_BASE/data 和 $BT_PG_BASE/16/data）"; exit 1; }
+  echo "    ✓ 宝塔已装 PG（base: $BT_PG_BASE / data: $PG_DATA / 跳过 dnf 装包）"
 else
   # 非宝塔场景：dnf/apt 装 PG
   case $PKG in
@@ -164,10 +162,20 @@ systemctl reload postgresql 2>/dev/null || systemctl reload postgresql-16 2>/dev
 
 # ---- 3. DB 与用户 ----
 echo "==> [3/9] 数据库 $DB_NAME / 用户 $DB_USER"
-sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" 2>/dev/null | grep -q 1 || \
-  sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';"
-sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null | grep -q 1 || \
-  sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER ENCODING 'UTF8';"
+# 宝塔场景：sudo -u postgres 调用宝塔的 psql
+PSQL_CMD="sudo -u postgres $PG_BIN/psql"
+sudo -u postgres $PG_BIN/psql -tc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" 2>/dev/null | grep -q 1 || \
+  sudo -u postgres $PG_BIN/psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';"
+sudo -u postgres $PG_BIN/psql -tc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null | grep -q 1 || \
+  sudo -u postgres $PG_BIN/psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER ENCODING 'UTF8';"
+# 允许本地连接用密码（修改 pg_hba.conf）
+PG_HBA=$PG_DATA/pg_hba.conf
+if [[ -f $PG_HBA ]] && ! grep -q "cloverweb local" $PG_HBA; then
+  echo "host    $DB_NAME    $DB_USER    127.0.0.1/32    md5" >> $PG_HBA
+  echo "host    $DB_NAME    $DB_USER    ::1/128         md5" >> $PG_HBA
+  systemctl reload postgresql 2>/dev/null || systemctl reload postgresql-16 2>/dev/null || true
+  echo "    ✓ pg_hba.conf 已添加 $DB_USER 密码认证"
+fi
 
 # ---- 4. 应用用户 / 目录 / 部署用户 ----
 echo "==> [4/9] 应用用户与目录"
