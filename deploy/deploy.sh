@@ -2,6 +2,8 @@
 # CloverWeb 每次部署脚本（由 GitHub Actions 调用，在 CVM 上执行）
 # 用法: sudo bash /opt/cloverweb/deploy/deploy.sh /tmp/cloverweb-deploy.tar.gz
 set -euo pipefail
+# 关历史扩展（避免 .env 里含 ! 触发 bash 解析错误）
+set +H
 
 APP_DIR=/opt/cloverweb
 APP_USER=cloverweb
@@ -26,6 +28,10 @@ rsync -a --delete \
   --exclude 'staticfiles/' \
   --exclude 'media/' \
   "$STAGE/backend/" "$APP_DIR/backend/"
+# 部署脚本 + 辅助工具同步到 /opt/cloverweb/deploy/（首次跑时这个目录可能不存在）
+mkdir -p "$APP_DIR/deploy"
+rsync -a "$STAGE/deploy/" "$APP_DIR/deploy/"
+chmod +x "$APP_DIR/deploy/deploy.sh" "$APP_DIR/deploy/parse_env.py"
 mkdir -p "$APP_DIR"/backend/{staticfiles,media}
 chown -R $APP_USER:$APP_USER "$APP_DIR"/backend/{staticfiles,media}
 
@@ -33,10 +39,23 @@ echo "==> [4/6] 安装依赖"
 sudo -u $APP_USER "$APP_DIR/backend/venv/bin/pip" install -q -r "$APP_DIR/backend/requirements.txt"
 
 echo "==> [5/6] 数据库迁移 + 收集静态文件"
-# sudo 会重置环境，.env 在子 shell 内以应用用户加载
-sudo -u $APP_USER bash -c "cd $APP_DIR/backend && set -a && source .env && set +a && \
-  venv/bin/python manage.py migrate --noinput && \
-  venv/bin/python manage.py collectstatic --noinput --clear"
+# 关键：manage.py 默认是 dev settings（SQLite），CVM 上必须切到 prod（PostgreSQL）
+# 用 python-dotenv 解析 .env（避免 bash source 遇到特殊字符炸）
+# quoted 版：用于当前 shell eval（单引号包裹安全）
+# unquoted 版：用于 sudo env 透传给子 shell（避免 'val' 当字符串）
+ENV_EXPORTS_QUOTED=$("$APP_DIR/backend/venv/bin/python" "$APP_DIR/deploy/parse_env.py" "$APP_DIR/backend/.env" quoted)
+ENV_EXPORTS_UNQUOTED=$("$APP_DIR/backend/venv/bin/python" "$APP_DIR/deploy/parse_env.py" "$APP_DIR/backend/.env" unquoted)
+echo "  已加载 $(echo "$ENV_EXPORTS_QUOTED" | wc -l) 个环境变量"
+# 当前 shell 加载（让 gunicorn / 后续命令也能看到）
+export DJANGO_SETTINGS_MODULE=cloverweb.settings.prod
+eval "$ENV_EXPORTS_QUOTED"
+# 透传给 sudo 子 shell
+# 已 set +H 关历史扩展，所以 DB_PASSWORD 里的 ! 不会触发 bash 扩展
+sudo -u $APP_USER env $(echo "$ENV_EXPORTS_UNQUOTED" | sed 's/^export //') \
+  DJANGO_SETTINGS_MODULE=cloverweb.settings.prod \
+  bash -c "cd $APP_DIR/backend && \
+    venv/bin/python manage.py migrate --noinput && \
+    venv/bin/python manage.py collectstatic --noinput --clear"
 
 echo "==> [6/6] 启动服务"
 systemctl start cloverweb
