@@ -43,7 +43,18 @@ if command -v apt >/dev/null; then echo "  apt: $(apt --version | head -1)"; fi
 echo
 echo "## 3. 宝塔面板"
 if [[ -d /www/server/panel ]]; then
-  BT_VER=$(cat /www/server/panel/BT-Panel 2>/dev/null || cat /www/server/panel/VERSION 2>/dev/null || echo "未知")
+  # 宝塔版本存在多个候选文件，按优先级探测
+  BT_VER="未知"
+  for f in /www/server/panel/version.json /www/server/panel/config/version.json /www/server/panel/VERSION /www/server/panel/data/port.pl; do
+    if [[ -f "$f" ]]; then
+      if [[ "$f" == *.json ]]; then
+        BT_VER=$(grep -oE '"version"\s*:\s*"[^"]+"' "$f" 2>/dev/null | head -1 | cut -d'"' -f4) || BT_VER="未知"
+      else
+        BT_VER=$(head -1 "$f" 2>/dev/null)
+      fi
+      [[ -n "$BT_VER" ]] && break
+    fi
+  done
   ok "宝塔面板已安装（版本: $BT_VER）"
   echo "  主 nginx: /www/server/nginx/sbin/nginx"
   echo "  vhost 目录: /www/server/panel/vhost/nginx/"
