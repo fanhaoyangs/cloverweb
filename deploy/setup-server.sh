@@ -73,60 +73,92 @@ echo "==> [2/9] PostgreSQL 16"
 rm -rf /var/cache/dnf/commandline-* 2>/dev/null || true
 rm -f /var/run/dnf.pid 2>/dev/null || true
 dnf clean all -q 2>/dev/null || true
-# 用全新缓存目录绕开脏缓存 bug
-FRESH_CACHE=/tmp/dnf-fresh-$$
-rm -rf "$FRESH_CACHE"
-mkdir -p "$FRESH_CACHE"
-DNF="dnf --setopt=cachedir=$FRESH_CACHE --setopt=keepcache=0"
 
+# 宝塔面板场景：PG 已装，跳过 dnf 装包，自动探测宝塔路径
+if [[ "${BT_PANEL:-false}" == "true" ]] && command -v pg_isready >/dev/null 2>&1; then
+  # 探测宝塔 PG 路径
+  BT_PG_BASE=""
+  for p in /www/server/pgsql /www/server/postgresql /usr/pgsql-16; do
+    [[ -d $p/bin && -x $p/bin/pg_isready ]] && BT_PG_BASE=$p && break
+  done
+  if [[ -z $BT_PG_BASE ]]; then
+    BT_PG_BASE=$(dirname $(dirname $(readlink -f $(which pg_isready))))
+  fi
+  echo "    ✓ 宝塔已装 PG（探测到 base: $BT_PG_BASE，跳过 dnf 装包）"
+  PG_DATA=$(sudo -u postgres psql -tAc "SHOW data_directory;" 2>/dev/null || echo "/www/server/pgsql/data")
+  PG_BIN=$BT_PG_BASE/bin
+  PG_CONF_DIR=$PG_DATA
+else
+  # 非宝塔场景：dnf/apt 装 PG
+  case $PKG in
+    apt)
+      if ! apt-cache show postgresql-16 >/dev/null 2>&1; then
+        install -d /usr/share/postgresql-common/pgdg
+        curl -fsS https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+          -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+        echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+          > /etc/apt/sources.list.d/pgdg.list
+        apt-get update -qq
+      fi
+      apt-get install -y -qq postgresql-16
+      PG_DATA=/var/lib/postgresql/16/main
+      PG_CONF=/etc/postgresql/16/main
+      ;;
+    dnf)
+      $DNF install -y -q https://download.postgresql.org/pub/repos/yum/\
+reporpms/EL-$(rpm -E '%{rhel}')-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+      $DNF -qy module disable postgresql 2>/dev/null || true
+      $DNF install -y -q postgresql16-server postgresql16-contrib
+      PG_DATA=/var/lib/pgsql/16/data
+      PG_CONF=/var/lib/pgsql/16/data
+      [[ ! -f $PG_DATA/PG_VERSION ]] && /usr/pgsql-16/bin/postgresql-16-setup initdb
+      ;;
+  esac
+fi
+
+# 启动 PG（宝塔已启动；非宝塔场景才 enable+start）
+if [[ "${BT_PANEL:-false}" != "true" ]]; then
+  systemctl enable postgresql 2>/dev/null || systemctl enable postgresql-16
+  systemctl start postgresql 2>/dev/null || systemctl start postgresql-16
+fi
+systemctl is-active postgresql >/dev/null 2>&1 || systemctl is-active postgresql-16 >/dev/null 2>&1 || \
+  { err "PG 启动失败"; exit 1; }
+
+# 2C2G 保守参数（按场景写不同路径）
 case $PKG in
   apt)
-    if ! apt-cache show postgresql-16 >/dev/null 2>&1; then
-      install -d /usr/share/postgresql-common/pgdg
-      curl -fsS https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-        -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
-      echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
-        > /etc/apt/sources.list.d/pgdg.list
-      apt-get update -qq
-    fi
-    apt-get install -y -qq postgresql-16
-    PG_DATA=/var/lib/postgresql/16/main
-    PG_CONF=/etc/postgresql/16/main
+    cat >/etc/postgresql/16/main/conf.d/cloverweb.conf <<'EOF'
+# CloverWeb 2C2G 调优
+shared_buffers = 256MB
+effective_cache_size = 768MB
+work_mem = 4MB
+max_connections = 60
+EOF
     ;;
   dnf)
-    $DNF install -y -q https://download.postgresql.org/pub/repos/yum/\
-reporpms/EL-$(rpm -E '%{rhel}')-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-    $DNF -qy module disable postgresql 2>/dev/null || true
-    $DNF install -y -q postgresql16-server postgresql16-contrib
-    # 初始化（仅首次）
-    PG_DATA=/var/lib/pgsql/16/data
-    PG_CONF=/var/lib/pgsql/16/data
-    [[ ! -f $PG_DATA/PG_VERSION ]] && /usr/pgsql-16/bin/postgresql-16-setup initdb
+    if [[ "${BT_PANEL:-false}" == "true" ]]; then
+      # 宝塔：写到数据目录（自动 include）
+      cat >$PG_DATA/cloverweb.conf <<'EOF'
+# CloverWeb 2C2G 调优
+shared_buffers = 256MB
+effective_cache_size = 768MB
+work_mem = 4MB
+max_connections = 60
+EOF
+      # 确保 postgresql.conf include 这个文件
+      grep -q "^include.*cloverweb.conf" $PG_DATA/postgresql.conf 2>/dev/null || \
+        echo "include_if_exists = 'cloverweb.conf'" >> $PG_DATA/postgresql.conf
+    else
+      cat >${PG_CONF}/postgresql.conf.d/cloverweb.conf 2>/dev/null || \
+        cat >${PG_CONF}/cloverweb.conf <<'EOF'
+# CloverWeb 2C2G 调优
+shared_buffers = 256MB
+effective_cache_size = 768MB
+work_mem = 4MB
+max_connections = 60
+EOF
+    fi
     ;;
-esac
-
-# 启动 PG（先 enable 再 start；RHEL 立即启动，Debian/Ubuntu 装完就启动了）
-systemctl enable postgresql 2>/dev/null || systemctl enable postgresql-16
-systemctl start postgresql 2>/dev/null || systemctl start postgresql-16
-
-# 2C2G 保守参数
-cat >${PG_CONF}/postgresql.conf.d/cloverweb.conf 2>/dev/null || \
-  cat >${PG_CONF}/cloverweb.conf <<'EOF'
-# CloverWeb 2C2G 调优
-shared_buffers = 256MB
-effective_cache_size = 768MB
-work_mem = 4MB
-max_connections = 60
-EOF
-case $PKG in
-  apt) cat >/etc/postgresql/16/main/conf.d/cloverweb.conf <<'EOF'
-# CloverWeb 2C2G 调优
-shared_buffers = 256MB
-effective_cache_size = 768MB
-work_mem = 4MB
-max_connections = 60
-EOF
-  ;;
 esac
 systemctl reload postgresql 2>/dev/null || systemctl reload postgresql-16 2>/dev/null || true
 
