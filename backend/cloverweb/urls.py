@@ -3,8 +3,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-admin.site.site_header = 'CloverWeb 后台管理'
-admin.site.site_title = 'CloverWeb'
+admin.site.site_header = '四叶草堂 后台管理'
+admin.site.site_title = '四叶草堂'
 admin.site.index_title = '内容管理'
 
 urlpatterns = [
