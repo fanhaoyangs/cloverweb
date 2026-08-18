@@ -73,6 +73,11 @@ echo "==> [2/9] PostgreSQL 16"
 rm -rf /var/cache/dnf/commandline-* 2>/dev/null || true
 rm -f /var/run/dnf.pid 2>/dev/null || true
 dnf clean all -q 2>/dev/null || true
+# 用全新缓存目录绕开脏缓存 bug
+FRESH_CACHE=/tmp/dnf-fresh-$$
+rm -rf "$FRESH_CACHE"
+mkdir -p "$FRESH_CACHE"
+DNF="dnf --setopt=cachedir=$FRESH_CACHE --setopt=keepcache=0"
 
 case $PKG in
   apt)
@@ -89,10 +94,10 @@ case $PKG in
     PG_CONF=/etc/postgresql/16/main
     ;;
   dnf)
-    dnf install -y -q https://download.postgresql.org/pub/repos/yum/\
+    $DNF install -y -q https://download.postgresql.org/pub/repos/yum/\
 reporpms/EL-$(rpm -E '%{rhel}')-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-    dnf -qy module disable postgresql 2>/dev/null || true
-    dnf install -y -q postgresql16-server postgresql16-contrib
+    $DNF -qy module disable postgresql 2>/dev/null || true
+    $DNF install -y -q postgresql16-server postgresql16-contrib
     # 初始化（仅首次）
     PG_DATA=/var/lib/pgsql/16/data
     PG_CONF=/var/lib/pgsql/16/data
