@@ -34,6 +34,9 @@ rsync -a "$STAGE/deploy/" "$APP_DIR/deploy/"
 chmod +x "$APP_DIR/deploy/deploy.sh" "$APP_DIR/deploy/parse_env.py"
 mkdir -p "$APP_DIR"/backend/{staticfiles,media}
 chown -R $APP_USER:$APP_USER "$APP_DIR"/backend/{staticfiles,media}
+# nginx 以 www 用户跑，需要可读 web/ 和 backend/staticfiles/
+chmod 755 "$APP_DIR" "$APP_DIR/backend" "$APP_DIR/web"
+chmod -R o+rX "$APP_DIR/web" "$APP_DIR/backend/staticfiles"
 
 echo "==> [4/6] 安装依赖"
 sudo -u $APP_USER "$APP_DIR/backend/venv/bin/pip" install -q -r "$APP_DIR/backend/requirements.txt"
