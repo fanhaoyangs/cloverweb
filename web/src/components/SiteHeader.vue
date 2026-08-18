@@ -15,7 +15,7 @@
       <li><router-link to="/" :class="{ active: $route.path === '/' }">花开中国</router-link></li>
       <li><router-link to="/philosophy" :class="{ active: $route.path === '/philosophy' }">理念路径</router-link></li>
       <li><router-link to="/news" :class="{ active: $route.path === '/news' }">资讯分享</router-link></li>
-      <li><router-link to="/about" :class="{ active: $route.path === '/about' }">关于我们</router-link></li>
+      <li><router-link to="/clover" :class="{ active: $route.path === '/clover' }">关于我们</router-link></li>
     </ul>
     <div class="mobile-menu-btn" :class="{ active: mobileMenuOpen }" @click="toggleMobileMenu" ref="mobileMenuBtnRef">
       <span></span>
