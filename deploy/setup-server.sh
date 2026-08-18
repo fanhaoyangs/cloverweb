@@ -47,9 +47,13 @@ case $PKG in
     ;;
   dnf)
     dnf install -y -q curl rsync ca-certificates gnupg \
-      python3 python3-venv python3-pip
+      python3 python3-pip
     # 尝试启用 python3.11 module（OpenCloudOS 8/9 都支持）
     dnf module -y enable python311 2>/dev/null || dnf module -y switch-to python311 2>/dev/null || true
+    # venv 包名按 Python 主版本动态探测（OCL9 + Python 3.11 → python3.11-venv）
+    PY_MM=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "3.11")
+    dnf install -y -q "python${PY_MM}-venv" 2>/dev/null || dnf install -y -q python3-venv 2>/dev/null || \
+      { echo "    ⚠ python3-venv 安装失败，尝试 ensurepip 方式"; python3 -m ensurepip --upgrade 2>/dev/null || true; }
     ;;
 esac
 
@@ -132,8 +136,16 @@ chmod 440 /etc/sudoers.d/$DEPLOY_USER
 
 # ---- 5. Python venv ----
 echo "==> [5/9] Python 虚拟环境"
-PY=$(command -v python3.11 || command -v python3)
-sudo -u $APP_USER $PY -m venv $APP_DIR/backend/venv
+# 优先用 python3.11，没有就用 python3，最后用 python3.10 兜底
+PY=$(command -v python3.11 || command -v python3 || command -v python3.10 || echo "python3")
+echo "    使用 Python: $($PY --version 2>&1)"
+if ! $PY -m venv --help >/dev/null 2>&1; then
+  err "venv 模块不可用，尝试 ensurepip"
+  $PY -m ensurepip --upgrade 2>/dev/null || true
+fi
+sudo -u $APP_USER $PY -m venv $APP_DIR/backend/venv || \
+  $PY -m venv $APP_DIR/backend/venv 2>/dev/null || \
+  { err "venv 创建失败"; exit 1; }
 
 # ---- 6. backend/.env（首次生成，不覆盖） ----
 echo "==> [6/9] backend/.env"
