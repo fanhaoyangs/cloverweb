@@ -69,9 +69,10 @@ esac
 
 # ---- 2. PostgreSQL 16 ----
 echo "==> [2/9] PostgreSQL 16"
-# 再次清理缓存（之前 PG 那步的脏缓存）
-dnf clean all -q 2>/dev/null || true
+# 强力清掉之前 dnf 半截留下的 commandline 脏缓存
+rm -rf /var/cache/dnf/commandline-* 2>/dev/null || true
 rm -f /var/run/dnf.pid 2>/dev/null || true
+dnf clean all -q 2>/dev/null || true
 
 case $PKG in
   apt)
