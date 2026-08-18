@@ -6,6 +6,13 @@
 # 退出: 0=成功 / 1=失败
 set -euo pipefail
 
+# 工具函数
+err() { echo "ERROR: $*" >&2; }
+ok()  { echo "  ✓ $*"; }
+warn(){ echo "  ⚠ $*"; }
+step(){ echo; echo "==> [$1]"; }
+info(){ echo "    $*"; }
+
 APP_DIR=/opt/cloverweb
 APP_USER=cloverweb
 DEPLOY_USER=cloverweb-deploy
