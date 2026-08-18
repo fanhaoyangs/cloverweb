@@ -59,6 +59,10 @@ esac
 
 # ---- 2. PostgreSQL 16 ----
 echo "==> [2/9] PostgreSQL 16"
+# 再次清理缓存（之前 PG 那步的脏缓存）
+dnf clean all -q 2>/dev/null || true
+rm -f /var/run/dnf.pid 2>/dev/null || true
+
 case $PKG in
   apt)
     if ! apt-cache show postgresql-16 >/dev/null 2>&1; then
@@ -136,16 +140,25 @@ chmod 440 /etc/sudoers.d/$DEPLOY_USER
 
 # ---- 5. Python venv ----
 echo "==> [5/9] Python 虚拟环境"
-# 优先用 python3.11，没有就用 python3，最后用 python3.10 兜底
 PY=$(command -v python3.11 || command -v python3 || command -v python3.10 || echo "python3")
-echo "    使用 Python: $($PY --version 2>&1)"
+echo "    使用 Python: $($PY --version 2>&1) ($PY)"
+
+# 优先尝试 dnf 装 venv（如果还缺）
+PY_MM=$($PY -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "3.11")
 if ! $PY -m venv --help >/dev/null 2>&1; then
-  err "venv 模块不可用，尝试 ensurepip"
-  $PY -m ensurepip --upgrade 2>/dev/null || true
+  echo "    尝试 dnf install python${PY_MM}-venv"
+  dnf install -y -q "python${PY_MM}-venv" 2>&1 | tail -3 || true
 fi
-sudo -u $APP_USER $PY -m venv $APP_DIR/backend/venv || \
-  $PY -m venv $APP_DIR/backend/venv 2>/dev/null || \
-  { err "venv 创建失败"; exit 1; }
+
+# 创建 venv
+if $PY -m venv $APP_DIR/backend/venv 2>&1 | tail -3; then
+  echo "    ✓ venv 创建成功"
+else
+  echo "    尝试以 $APP_USER 创建"
+  sudo -u $APP_USER $PY -m venv $APP_DIR/backend/venv 2>&1 | tail -3 || true
+fi
+[[ -f $APP_DIR/backend/venv/bin/python ]] || \
+  { err "venv 创建失败（$APP_DIR/backend/venv/bin/python 不存在）"; exit 1; }
 
 # ---- 6. backend/.env（首次生成，不覆盖） ----
 echo "==> [6/9] backend/.env"
