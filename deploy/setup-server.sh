@@ -129,22 +129,20 @@ fi
 # 用 pg_isready 直连验证（不依赖服务名，宝塔服务名通常是 PgSQL/postgresql-16）
 info "PG_DATA = $PG_DATA"
 info "PG_BIN  = $PG_BIN"
-PG_PORT=$(grep -E "^[[:space:]]*port[[:space:]]*=" $PG_DATA/postgresql.conf 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*([0-9]+).*/\1/')
-PG_PORT=${PG_PORT:-5432}
-info "PG_PORT = $PG_PORT"
-for i in 1 2 3 4 5; do
+# 宝塔 postgresql.conf 可能没暴露 port 行；先用 5432 默认值，失败再扫
+for PG_PORT in 5432 5433 5434; do
   if $PG_BIN/pg_isready -h 127.0.0.1 -p $PG_PORT -q 2>/dev/null; then
     ok "PG 已就绪（127.0.0.1:$PG_PORT）"
     break
   fi
-  info "等待 PG 启动...($i/5)"
-  sleep 1
+  info "127.0.0.1:$PG_PORT 未响应"
 done
-if ! $PG_BIN/pg_isready -h 127.0.0.1 -p $PG_PORT -q 2>/dev/null; then
-  err "PG 启动失败（pg_isready 127.0.0.1:$PG_PORT 超时）"
+if ! $PG_BIN/pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null \
+   && ! $PG_BIN/pg_isready -h 127.0.0.1 -p 5433 -q 2>/dev/null \
+   && ! $PG_BIN/pg_isready -h 127.0.0.1 -p 5434 -q 2>/dev/null; then
+  err "PG 未在 5432/5433/5434 监听"
   info "请检查: 1) PG 进程是否在跑 ps -ef | grep postgres"
-  info "          2) postgresql.conf 的 port 是否为 $PG_PORT"
-  info "          3) listen_addresses 是否含 127.0.0.1"
+  info "          2) 实际监听端口: ss -tlnp | grep postgres"
   exit 1
 fi
 
