@@ -27,6 +27,7 @@ class SitePage(models.Model):
         ('home', '首页'),
         ('about', '关于我们'),
         ('philosophy', '理念'),
+        ('clover', '四叶草堂'),
     ]
 
     slug = models.SlugField('页面标识', max_length=32, unique=True, choices=PAGE_CHOICES)

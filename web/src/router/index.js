@@ -22,6 +22,12 @@ const publicRoutes = [
     props: { slug: 'philosophy' }
   },
   {
+    path: '/clover',
+    name: 'Clover',
+    component: SitePageView,
+    props: { slug: 'clover' }
+  },
+  {
     path: '/news',
     name: 'NewsList',
     component: () => import('@/views/NewsList.vue')

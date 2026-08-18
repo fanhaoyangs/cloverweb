@@ -58,7 +58,8 @@ sudo -u $APP_USER env $(echo "$ENV_EXPORTS_UNQUOTED" | sed 's/^export //') \
   DJANGO_SETTINGS_MODULE=cloverweb.settings.prod \
   bash -c "cd $APP_DIR/backend && \
     venv/bin/python manage.py migrate --noinput && \
-    venv/bin/python manage.py collectstatic --noinput --clear"
+    venv/bin/python manage.py collectstatic --noinput --clear && \
+    venv/bin/python manage.py loaddata apps/team/fixtures/initial_sitepages.json 2>&1 | tail -3 || true"
 
 echo "==> [6/6] 启动服务"
 systemctl start cloverweb

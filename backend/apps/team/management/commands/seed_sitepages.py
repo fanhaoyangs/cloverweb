@@ -21,8 +21,10 @@ from apps.team.models import SitePage
 
 PAGES = [
     ('home', '花开中国｜首页', 'index.html'),
-    ('about', '关于我们 - 花开中国', 'clover.html'),
     ('philosophy', '理念路径 - 花开中国', 'philosophy.html'),
+    ('clover', '四叶草堂 - 重塑家园 共生发展', 'clover.html'),
+    # about 暂留空：main/ 没有 about.html，CMS 后台 (/admin/sitepages) 可手填
+    # ('about', '关于我们', None),
 ]
 
 FONT_IMPORT = (

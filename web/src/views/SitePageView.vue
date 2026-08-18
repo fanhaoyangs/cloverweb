@@ -26,6 +26,100 @@ const loading = ref(true)
 const page = ref(null)
 const pageEl = ref(null)
 
+/**
+ * 每个 SitePage 里的"文章块"挂载配置。
+ * selector: 容器 CSS 选择器（已存在静态页 HTML 里）
+ * section:  Article.website_sections 的标记值
+ * cardTpl:  注入卡片的 HTML 模板（标题 + 封面 + 链接）
+ * prepend:  true=插入到容器最前，false=追加到末尾，'replace'=清空容器
+ */
+const SECTION_INJECTIONS = {
+  home: [
+    {
+      selector: '.review-grid',
+      section: 'home_news',
+      prepend: true,
+      cardTpl: (a) => `
+        <a href="/news/${a.slug}" class="review-card-link">
+          <div class="review-card">
+            <div class="review-image">
+              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
+            </div>
+            <div class="review-content-area">
+              <p>${escapeHtml(a.title)}</p>
+            </div>
+          </div>
+        </a>`
+    }
+  ],
+  clover: [
+    {
+      selector: '.media-grid',
+      section: 'clover_media',
+      prepend: true,
+      cardTpl: (a) => `
+        <a href="/news/${a.slug}" class="media-card-link">
+          <div class="media-card">
+            <div class="media-image">
+              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
+            </div>
+            <div class="media-content-area">
+              <h4>${escapeHtml(a.title)}</h4>
+              ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+            </div>
+          </div>
+        </a>`
+    }
+  ],
+  philosophy: [
+    {
+      selector: '.salon-content',
+      section: 'philosophy_salon',
+      prepend: true,
+      cardTpl: (a) => `
+        <a href="/news/${a.slug}" class="salon-card-link">
+          <h4>${escapeHtml(a.title)}</h4>
+          ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+          <span class="salon-link">了解详情 →</span>
+        </a>`
+    },
+    {
+      selector: '.publications-grid',
+      section: 'philosophy_publications',
+      prepend: true,
+      cardTpl: (a) => `
+        <a href="/news/${a.slug}" class="publication-card-link">
+          <div class="publication-card">
+            <div class="publication-image">
+              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
+            </div>
+            <div class="publication-content-area">
+              <h4>${escapeHtml(a.title)}</h4>
+              ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+            </div>
+          </div>
+        </a>`
+    },
+    {
+      selector: '.cases-grid',
+      section: 'philosophy_cases',
+      prepend: true,
+      cardTpl: (a) => `
+        <a href="/news/${a.slug}" class="case-card-link">
+          <div class="case-card">
+            <div class="case-image">
+              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
+            </div>
+            <div class="case-content-area">
+              <h4>${escapeHtml(a.title)}</h4>
+              ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+            </div>
+          </div>
+        </a>`
+    }
+  ]
+}
+
 async function load() {
   loading.value = true
   page.value = null
@@ -35,44 +129,47 @@ async function load() {
     if (page.value && page.value.title) {
       document.title = page.value.title
     }
-    if (props.slug === 'home') {
-      await nextTick()
-      injectHomeNews()
-    }
+    await nextTick()
+    await injectAllSections()
   }
   loading.value = false
 }
 
 /**
- * 首页资讯卡片接线：把 section=home_news 的已发布文章卡片
- * 前插到静态 HTML 的「新闻回顾」网格（.review-grid），复用原卡片样式。
+ * 把每个 page 里配置的所有 article-block 容器注入 Article 卡片
+ * 全部失败不抛错（用 try/catch 包住，缺某个 section selector 也不影响其他）
  */
-async function injectHomeNews() {
-  const grid = pageEl.value?.querySelector('.review-grid')
-  if (!grid) return
+async function injectAllSections() {
+  const injections = SECTION_INJECTIONS[props.slug] || []
+  for (const cfg of injections) {
+    try {
+      await injectOne(cfg)
+    } catch (e) {
+      console.warn(`[sitepage] inject 失败 ${cfg.section}:`, e)
+    }
+  }
+}
 
-  const res = await listArticles({ websiteSection: 'home_news', pageSize: 4 })
+async function injectOne({ selector, section, prepend, cardTpl }) {
+  const container = pageEl.value?.querySelector(selector)
+  if (!container) return
+  const res = await listArticles({ section, pageSize: 8 })
   if (res.code !== 0) return
   const articles = res.data.list || []
   if (articles.length === 0) return
-
   const frag = document.createDocumentFragment()
-  for (const a of articles) {
-    const link = document.createElement('a')
-    link.href = `/news/${a.slug}`
-    link.className = 'review-card-link'
-    link.innerHTML = `
-      <div class="review-card">
-        <div class="review-image">
-          <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
-        </div>
-        <div class="review-content-area">
-          <p>${escapeHtml(a.title)}</p>
-        </div>
-      </div>`
-    frag.appendChild(link)
+  // 用 div 包裹避免 <a> 直接放进 fragment 报错
+  const wrapper = document.createElement('div')
+  wrapper.innerHTML = articles.map(cardTpl).join('')
+  while (wrapper.firstChild) frag.appendChild(wrapper.firstChild)
+  if (prepend === true) {
+    container.insertBefore(frag, container.firstChild)
+  } else if (prepend === 'replace') {
+    container.innerHTML = ''
+    container.appendChild(frag)
+  } else {
+    container.appendChild(frag)
   }
-  grid.insertBefore(frag, grid.firstChild)
 }
 
 function escapeHtml(s) {
