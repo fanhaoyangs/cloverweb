@@ -127,13 +127,17 @@ if [[ "${BT_PANEL:-false}" != "true" ]]; then
   systemctl start postgresql 2>/dev/null || systemctl start postgresql-16
 fi
 # 用 pg_isready 直连验证（不依赖服务名，宝塔服务名通常是 PgSQL/postgresql-16）
-PG_PORT=$(grep -E "^port" $PG_DATA/postgresql.conf 2>/dev/null | head -1 | awk '{print $3}' | tr -d "'\"")
+info "PG_DATA = $PG_DATA"
+info "PG_BIN  = $PG_BIN"
+PG_PORT=$(grep -E "^[[:space:]]*port[[:space:]]*=" $PG_DATA/postgresql.conf 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*([0-9]+).*/\1/')
 PG_PORT=${PG_PORT:-5432}
+info "PG_PORT = $PG_PORT"
 for i in 1 2 3 4 5; do
   if $PG_BIN/pg_isready -h 127.0.0.1 -p $PG_PORT -q 2>/dev/null; then
     ok "PG 已就绪（127.0.0.1:$PG_PORT）"
     break
   fi
+  info "等待 PG 启动...($i/5)"
   sleep 1
 done
 if ! $PG_BIN/pg_isready -h 127.0.0.1 -p $PG_PORT -q 2>/dev/null; then
