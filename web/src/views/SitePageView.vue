@@ -153,7 +153,7 @@ async function injectAllSections() {
 async function injectOne({ selector, section, prepend, cardTpl }) {
   const container = pageEl.value?.querySelector(selector)
   if (!container) return
-  const res = await listArticles({ section, pageSize: 8 })
+  const res = await listArticles({ websiteSection: section, pageSize: 8 })
   if (res.code !== 0) return
   const articles = res.data.list || []
   if (articles.length === 0) return
@@ -193,5 +193,117 @@ watch(() => props.slug, load)
   color: #8a9a8a;
   font-size: 15px;
   letter-spacing: 2px;
+}
+</style>
+
+<!-- inject 卡片样式：v-html 内容不受 scoped 影响，用全局 -->
+<style>
+/* 通用：injected card 链接重置 */
+.sitepage a.review-card-link,
+.sitepage a.media-card-link,
+.sitepage a.publication-card-link,
+.sitepage a.case-card-link,
+.sitepage a.salon-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sitepage a.review-card-link:hover,
+.sitepage a.media-card-link:hover,
+.sitepage a.publication-card-link:hover,
+.sitepage a.case-card-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* review-card / media-card / publication-card / case-card 卡片本身 */
+.sitepage .review-card,
+.sitepage .media-card,
+.sitepage .publication-card,
+.sitepage .case-card {
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.sitepage .review-card img,
+.sitepage .media-card img,
+.sitepage .publication-card img,
+.sitepage .case-card img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+}
+.sitepage .review-content-area,
+.sitepage .media-content-area,
+.sitepage .publication-content-area,
+.sitepage .case-content-area {
+  padding: 14px 16px 18px;
+}
+.sitepage .review-content-area p,
+.sitepage .media-content-area h4,
+.sitepage .publication-content-area h4,
+.sitepage .case-content-area h4 {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: #3a3a3a;
+  margin: 0 0 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sitepage .media-content-area p,
+.sitepage .publication-content-area p,
+.sitepage .case-content-area p {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* salon 单卡片（philosophy 路径里） */
+.sitepage a.salon-card-link {
+  display: block;
+  padding: 30px 40px;
+  background: #fff;
+  border-left: 4px solid #5a7d5a;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.sitepage a.salon-card-link h4 {
+  font-size: 18px;
+  color: #2a3a2a;
+  margin: 0 0 10px;
+  font-weight: 500;
+}
+.sitepage a.salon-card-link p {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.8;
+  margin: 0 0 12px;
+}
+.sitepage a.salon-card-link .salon-link {
+  display: inline-block;
+  font-size: 13px;
+  color: #5a7d5a;
+  font-weight: 500;
+}
+
+/* responsive */
+@media (max-width: 768px) {
+  .sitepage a.salon-card-link {
+    padding: 20px;
+  }
 }
 </style>
