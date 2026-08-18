@@ -126,8 +126,23 @@ if [[ "${BT_PANEL:-false}" != "true" ]]; then
   systemctl enable postgresql 2>/dev/null || systemctl enable postgresql-16
   systemctl start postgresql 2>/dev/null || systemctl start postgresql-16
 fi
-systemctl is-active postgresql >/dev/null 2>&1 || systemctl is-active postgresql-16 >/dev/null 2>&1 || \
-  { err "PG 启动失败"; exit 1; }
+# 用 pg_isready 直连验证（不依赖服务名，宝塔服务名通常是 PgSQL/postgresql-16）
+PG_PORT=$(grep -E "^port" $PG_DATA/postgresql.conf 2>/dev/null | head -1 | awk '{print $3}' | tr -d "'\"")
+PG_PORT=${PG_PORT:-5432}
+for i in 1 2 3 4 5; do
+  if $PG_BIN/pg_isready -h 127.0.0.1 -p $PG_PORT -q 2>/dev/null; then
+    ok "PG 已就绪（127.0.0.1:$PG_PORT）"
+    break
+  fi
+  sleep 1
+done
+if ! $PG_BIN/pg_isready -h 127.0.0.1 -p $PG_PORT -q 2>/dev/null; then
+  err "PG 启动失败（pg_isready 127.0.0.1:$PG_PORT 超时）"
+  info "请检查: 1) PG 进程是否在跑 ps -ef | grep postgres"
+  info "          2) postgresql.conf 的 port 是否为 $PG_PORT"
+  info "          3) listen_addresses 是否含 127.0.0.1"
+  exit 1
+fi
 
 # 2C2G 保守参数（按场景写不同路径）
 case $PKG in
