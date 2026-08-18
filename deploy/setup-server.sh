@@ -204,8 +204,11 @@ fi
 # ---- 4. 应用用户 / 目录 / 部署用户 ----
 echo "==> [4/9] 应用用户与目录"
 id -u $APP_USER >/dev/null 2>&1 || useradd -r -m -d $APP_DIR -s /usr/sbin/nologin $APP_USER
-mkdir -p $APP_DIR/{backend,web,deploy}
-cp -r "$(dirname "$0")"/. $APP_DIR/deploy/
+# 重要：只创建不存在的子目录，绝不删 backend/web（避免误删已部署的 venv/.env）
+for d in backend web deploy; do
+  [[ -d $APP_DIR/$d ]] || mkdir -p $APP_DIR/$d
+done
+cp -rn "$(dirname "$0")"/. $APP_DIR/deploy/ 2>/dev/null || true
 
 # CI 部署用户
 id -u $DEPLOY_USER >/dev/null 2>&1 || useradd -r -m -s /bin/bash $DEPLOY_USER
