@@ -144,6 +144,10 @@ FEISHU_REDIRECT_URI = os.getenv(
 FEISHU_ALLOWED_OPEN_IDS = [
     x.strip() for x in os.getenv('FEISHU_ALLOWED_OPEN_IDS', '').split(',') if x.strip()
 ]
+# 租户（企业）级白名单：user_info 返回的 tenant_key 命中即放行，适合整企业开放
+FEISHU_ALLOWED_TENANT_KEYS = [
+    x.strip() for x in os.getenv('FEISHU_ALLOWED_TENANT_KEYS', '').split(',') if x.strip()
+]
 # 飞书文档导入（user OAuth 模式）：可选文件夹 token（用户需有访问权限），用于列表浏览
 FEISHU_FOLDER_TOKEN = os.getenv('FEISHU_FOLDER_TOKEN', '')
 

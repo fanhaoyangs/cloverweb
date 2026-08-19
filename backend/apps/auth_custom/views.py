@@ -51,7 +51,11 @@ def feishu_callback(request):
     """第二步：飞书回跳。校验 state → 建用户 → 生成 JWT → 一次性 code 中转（不把 JWT 放 URL）。"""
     code = request.query_params.get('code', '')
     state = request.query_params.get('state', '')
-    if not code or not cache.pop(f'feishu_state:{state}', False):
+    # 一次性 state：Django 缓存 API 无 pop()，用 get+delete 实现
+    state_ok = cache.get(f'feishu_state:{state}') is not None
+    if state_ok:
+        cache.delete(f'feishu_state:{state}')
+    if not code or not state_ok:
         return Response({'detail': 'state 无效或已过期，请重新发起登录'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
@@ -61,7 +65,10 @@ def feishu_callback(request):
         return Response({'detail': f'飞书授权失败: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
     open_id = user_info.get('open_id', '')
-    # 白名单：配置了就只放白名单内账号（内部 CMS）
+    # 白名单：租户级（tenant_key）与账号级（open_id）各自独立校验，配置了哪个就启用哪个
+    tenant_key = user_info.get('tenant_key', '')
+    if settings.FEISHU_ALLOWED_TENANT_KEYS and tenant_key not in settings.FEISHU_ALLOWED_TENANT_KEYS:
+        return Response({'detail': '该飞书账号所在企业未在白名单内'}, status=status.HTTP_403_FORBIDDEN)
     if settings.FEISHU_ALLOWED_OPEN_IDS and open_id not in settings.FEISHU_ALLOWED_OPEN_IDS:
         return Response({'detail': '该飞书账号未在后台白名单内'}, status=status.HTTP_403_FORBIDDEN)
 

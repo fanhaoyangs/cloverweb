@@ -21,10 +21,11 @@
           <el-icon><Files /></el-icon>
           <span>静态页管理</span>
         </el-menu-item>
-        <el-menu-item index="/django-admin/" @click.prevent="openDjangoAdmin">
+        <!-- 不用 el-menu-item：其 click 事件无原生事件对象，.prevent 会崩；且 router 模式会把 SPA 路由推到空白页 -->
+        <li class="el-menu-item django-admin-item" role="menuitem" @click="openDjangoAdmin">
           <el-icon><Setting /></el-icon>
           <span>Django 后台</span>
-        </el-menu-item>
+        </li>
       </el-menu>
       <div class="cms-aside-footer">
         <el-button text size="small" @click="$router.push('/')">
