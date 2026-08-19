@@ -1,4 +1,4 @@
-# CloverHub Web 管理后台
+# cloverweb Web 管理后台
 
 基于 Vue 3 + Element Plus 的 Web 管理后台，用于管理活动、用户数据和备份。
 

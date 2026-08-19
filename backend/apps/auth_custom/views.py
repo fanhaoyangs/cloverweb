@@ -6,6 +6,8 @@
 3. 后端校验 state、换用户信息、建/更新用户，生成 JWT，
    用一次性 exchange_code 重定向回前端 /login-callback?code=...
 4. 前端 POST /api/auth/feishu/exchange/ {code} → 换 access JWT（一次性，120s）
+
+v1.1 修正：CMS 登录时同步存储 user_access_token，用于飞书文档导入。
 """
 import secrets
 
@@ -23,6 +25,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .feishu import get_user_access_token, get_user_info
 from .models import User
 from .serializers import UserSerializer
+from apps.content.models import FeishuToken
 
 
 @api_view(['GET'])
@@ -78,6 +81,23 @@ def feishu_callback(request):
     user.feishu_union_id = user_info.get('union_id') or user.feishu_union_id
     user.last_login_at = timezone.now()
     user.save()
+
+    # 存储 user_access_token，用于飞书文档导入（与 CMS 登录解耦）
+    expires_in = token_data.get('expires_in', 7200)
+    refresh_expires_in = token_data.get('refresh_token_expires_in', 0)
+    FeishuToken.objects.update_or_create(
+        user=user,
+        defaults={
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data.get('refresh_token', ''),
+            'scope': token_data.get('scope', ''),
+            'expires_at': timezone.now() + timezone.timedelta(seconds=expires_in),
+            'refresh_expires_at': (
+                timezone.now() + timezone.timedelta(seconds=refresh_expires_in)
+                if refresh_expires_in else None
+            ),
+        },
+    )
 
     jwt = RefreshToken.for_user(user)
     exchange_code = secrets.token_urlsafe(24)

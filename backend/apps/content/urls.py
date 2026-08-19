@@ -7,6 +7,14 @@ from .admin_views import (
     AdminSitePageDetailView,
     AdminSitePageListView,
 )
+from .feishu_views import (
+    FeishuAuthorizeView,
+    FeishuDocumentsView,
+    FeishuHistoryView,
+    FeishuImportView,
+    FeishuLogsView,
+    FeishuStatusView,
+)
 from .views import ArticleDetailView, ArticleListView, SitePageDetailView
 
 urlpatterns = [
@@ -20,4 +28,11 @@ urlpatterns = [
     path('admin/categories/', AdminCategoryListView.as_view()),
     path('admin/sitepages/', AdminSitePageListView.as_view()),
     path('admin/sitepages/<slug:slug>/', AdminSitePageDetailView.as_view()),
+    # 飞书文档导入（user OAuth 模式）
+    path('admin/feishu/authorize/', FeishuAuthorizeView.as_view()),
+    path('admin/feishu/status/', FeishuStatusView.as_view()),
+    path('admin/feishu/documents/', FeishuDocumentsView.as_view()),
+    path('admin/feishu/import/', FeishuImportView.as_view()),
+    path('admin/feishu/history/', FeishuHistoryView.as_view()),
+    path('admin/feishu/logs/', FeishuLogsView.as_view()),
 ]

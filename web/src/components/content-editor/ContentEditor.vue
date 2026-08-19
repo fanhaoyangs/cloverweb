@@ -3,6 +3,7 @@
     ref="ueditorRef"
     :modelValue="modelValue"
     @update:modelValue="handleInput"
+    @feishu-import="emit('feishu-import')"
     :height="height"
     :config="editorConfig"
   />
@@ -19,7 +20,7 @@ const props = defineProps({
   placeholder: { type: String, default: '' }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'feishu-import'])
 
 const ueditorRef = ref(null)
 
@@ -34,6 +35,7 @@ defineExpose({
   setContent: (content) => ueditorRef.value?.setContent(content),
   getContentTxt: () => ueditorRef.value?.getContentTxt() || '',
   getEditor: () => ueditorRef.value?.getEditor(),
-  triggerCatchRemoteImage: () => ueditorRef.value?.triggerCatchRemoteImage()
+  triggerCatchRemoteImage: () => ueditorRef.value?.triggerCatchRemoteImage(),
+  insertHtml: (html) => ueditorRef.value?.execCommand('insertHtml', html)
 })
 </script>

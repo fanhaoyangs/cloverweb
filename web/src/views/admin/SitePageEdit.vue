@@ -24,7 +24,7 @@
           </el-form-item>
           <el-form-item label="内容">
             <div class="editor-box">
-              <ContentEditor v-model="form.content_html" :height="520" />
+              <ContentEditor ref="editorRef" v-model="form.content_html" :height="520" @feishu-import="feishuDialogVisible = true" />
             </div>
           </el-form-item>
           <el-form-item>
@@ -35,6 +35,8 @@
       </template>
       <div v-else class="empty">请选择左侧页面</div>
     </div>
+
+    <FeishuImportDialog v-model="feishuDialogVisible" @insert="handleFeishuInsert" />
   </div>
 </template>
 
@@ -42,6 +44,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ContentEditor from '@/components/content-editor/ContentEditor.vue'
+import FeishuImportDialog from '@/components/FeishuImportDialog.vue'
 import { listSitePages, getSitePageAdmin, updateSitePage } from '@/api/admin'
 
 const PAGE_NAMES = { home: '首页', about: '关于我们', philosophy: '理念路径' }
@@ -51,6 +54,21 @@ const current = ref('')
 const form = ref(null)
 const loading = ref(false)
 const saving = ref(false)
+const editorRef = ref(null)
+const feishuDialogVisible = ref(false)
+
+function handleFeishuInsert({ html, title, mode, fillTitle }) {
+  if (fillTitle && form.value && !form.value.title.trim() && title) {
+    form.value.title = title
+  }
+  if (mode === 'replace') {
+    editorRef.value?.setContent(html)
+    form.value.content_html = html
+  } else {
+    editorRef.value?.insertHtml(html)
+  }
+  ElMessage.success('飞书文档已插入编辑器')
+}
 
 onMounted(async () => {
   const { data } = await listSitePages()

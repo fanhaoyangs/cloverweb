@@ -11,7 +11,7 @@ const props = defineProps({
   height: { type: Number, default: 500 }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'feishu-import'])
 
 const editorContainer = ref(null)
 const editorId = `ueditor-${Date.now()}`
@@ -35,7 +35,7 @@ const defaultConfig = {
     '|', 'justifyleft', 'justifycenter', 'justifyright', 'justifyjustify', '|', 'link', 'unlink', '|',
     'insertimage', 'emotion', 'scrawl', '|', 'insertvideo', 'insertaudio', 'attachment', '|',
     'horizontal', 'date', 'time', 'spechars', '|', 'inserttable', 'deletetable', '|',
-    'xiumi', '|', 'template', 'background', 'formula', '|', 'print', 'preview'
+    'xiumi', 'feishuimport', '|', 'template', 'background', 'formula', '|', 'print', 'preview'
   ]]
 }
 
@@ -189,6 +189,11 @@ function initEditor() {
     catchRemoteImageTimeout: 30000
   })
 
+  // 飞书导入按钮桥接：UEditor 工具栏按钮 → Vue 事件（由父组件打开导入对话框）
+  window.__UE_FEISHU_IMPORT__ = () => {
+    emit('feishu-import')
+  }
+
   editor.addListener('ready', () => {
     console.log('[UEditor] 编辑器就绪')
     if (props.modelValue) {
@@ -222,14 +227,21 @@ function loadUEditor() {
       xiumiScript.src = '/UEditorPlus/dialogs/xiumi-connect/xiumi-ue-dialog-v5.js'
       xiumiScript.onerror = () => console.error('秀米脚本加载失败')
       xiumiScript.onload = () => {
-        nextTick(() => {
-          const scriptTag = document.createElement('script')
-          scriptTag.type = 'text/plain'
-          scriptTag.id = editorId
-          scriptTag.className = 'ueditor-script'
-          editorContainer.value.appendChild(scriptTag)
-          initEditor()
-        })
+        // 飞书导入按钮（registerUI，工具栏秀米旁）
+        const feishuScript = document.createElement('script')
+        feishuScript.src = '/UEditorPlus/dialogs/feishu-connect/feishu-ue-button.js'
+        feishuScript.onerror = () => console.error('飞书导入按钮脚本加载失败')
+        feishuScript.onload = () => {
+          nextTick(() => {
+            const scriptTag = document.createElement('script')
+            scriptTag.type = 'text/plain'
+            scriptTag.id = editorId
+            scriptTag.className = 'ueditor-script'
+            editorContainer.value.appendChild(scriptTag)
+            initEditor()
+          })
+        }
+        document.head.appendChild(feishuScript)
       }
       document.head.appendChild(xiumiScript)
     }
@@ -244,6 +256,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (catchImageTimer) clearTimeout(catchImageTimer)
+  if (window.__UE_FEISHU_IMPORT__) {
+    delete window.__UE_FEISHU_IMPORT__
+  }
   if (editor) {
     editor.destroy()
     editor = null

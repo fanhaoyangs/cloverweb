@@ -134,7 +134,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ---- 站点 ----
 SITE_URL = os.getenv('SITE_URL', 'https://communitygarden.org.cn')
 
-# ---- 飞书 OAuth（仅 CMS 内部登录，v3.2 决策）----
+# ---- 飞书 OAuth（CMS 登录 + 文档导入，v3.2 决策 / v1.1 改 user token）----
 FEISHU_APP_ID = os.getenv('FEISHU_APP_ID', '')
 FEISHU_APP_SECRET = os.getenv('FEISHU_APP_SECRET', '')
 FEISHU_REDIRECT_URI = os.getenv(
@@ -144,6 +144,8 @@ FEISHU_REDIRECT_URI = os.getenv(
 FEISHU_ALLOWED_OPEN_IDS = [
     x.strip() for x in os.getenv('FEISHU_ALLOWED_OPEN_IDS', '').split(',') if x.strip()
 ]
+# 飞书文档导入（user OAuth 模式）：可选文件夹 token（用户需有访问权限），用于列表浏览
+FEISHU_FOLDER_TOKEN = os.getenv('FEISHU_FOLDER_TOKEN', '')
 
 # ---- 腾讯云 COS（UEditorPlus 上传，Phase 2.1.4 启用）----
 COS_SECRET_ID = os.getenv('COS_SECRET_ID', '')

@@ -66,3 +66,29 @@ export function getSitePageAdmin(slug) {
 export function updateSitePage(slug, payload) {
   return request.put(`/admin/sitepages/${slug}/`, payload)
 }
+
+// ---- 飞书文档导入 ----
+export function getFeishuStatus() {
+  return request.get('/admin/feishu/status/')
+}
+
+// 获取带文档读取权限的授权链接（导入专用，与登录授权区分）
+export function getFeishuAuthorizeUrl() {
+  return request.get('/admin/feishu/authorize/')
+}
+
+export function listFeishuDocuments(params) {
+  return request.get('/admin/feishu/documents/', { params })
+}
+
+export function importFeishuDocument(url) {
+  return request.post('/admin/feishu/import/', { url })
+}
+
+export function listFeishuHistory() {
+  return request.get('/admin/feishu/history/')
+}
+
+export function listFeishuLogs() {
+  return request.get('/admin/feishu/logs/')
+}

@@ -212,7 +212,7 @@ curl -I http://communitygarden.org.cn  # 此时 502/404 都行，证明 Nginx �
 
 ```bash
 # 在项目根目录
-cd "/Users/fanfan/Library/Mobile Documents/com~apple~CloudDocs/CloverHub+web管理"
+cd "/Users/fanfan/Library/Mobile Documents/com~apple~CloudDocs/cloverweb"
 
 # 确认远程仓库地址
 git remote -v
@@ -567,7 +567,7 @@ sudo systemctl reload nginx
 
 GitHub Actions → 选运行的 run → 左侧 **Pack deploy bundle** 步骤会显示文件列表。或者本地：
 ```bash
-cd "/Users/fanfan/Library/Mobile Documents/com~apple~CloudDocs/CloverHub+web管理"
+cd "/Users/fanfan/Library/Mobile Documents/com~apple~CloudDocs/cloverweb"
 mkdir -p /tmp/check-bundle
 rsync -a backend/ /tmp/check-bundle/backend/ \
   --exclude venv/ --exclude __pycache__/ --exclude db.sqlite3 \

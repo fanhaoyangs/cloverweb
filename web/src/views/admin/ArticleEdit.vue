@@ -72,7 +72,7 @@
 
       <el-form-item label="正文">
         <div class="editor-box">
-          <ContentEditor v-model="form.content_html" :height="480" />
+          <ContentEditor ref="editorRef" v-model="form.content_html" :height="480" @feishu-import="feishuDialogVisible = true" />
         </div>
       </el-form-item>
 
@@ -82,6 +82,8 @@
         <el-button v-if="isEdit" @click="preview">预览</el-button>
       </el-form-item>
     </el-form>
+
+    <FeishuImportDialog v-model="feishuDialogVisible" @insert="handleFeishuInsert" />
   </div>
 </template>
 
@@ -90,6 +92,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ContentEditor from '@/components/content-editor/ContentEditor.vue'
+import FeishuImportDialog from '@/components/FeishuImportDialog.vue'
 import {
   getAdminArticle,
   createAdminArticle,
@@ -105,6 +108,21 @@ const loading = ref(false)
 const saving = ref(false)
 const categories = ref([])
 const tagOptions = ['社区花园', '竞赛', '活动', '媒体报道']
+const editorRef = ref(null)
+const feishuDialogVisible = ref(false)
+
+function handleFeishuInsert({ html, title, mode, fillTitle }) {
+  if (fillTitle && !form.title.trim() && title) {
+    form.title = title
+  }
+  if (mode === 'replace') {
+    editorRef.value?.setContent(html)
+    form.content_html = html
+  } else {
+    editorRef.value?.insertHtml(html)
+  }
+  ElMessage.success('飞书文档已插入编辑器')
+}
 
 const form = reactive({
   title: '',

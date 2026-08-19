@@ -1,7 +1,7 @@
 {
   "name": "clover-web-admin",
   "version": "1.0.0",
-  "description": "CloverHub Web Admin - 活动管理后台",
+  "description": "cloverweb Web Admin - 活动管理后台",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
