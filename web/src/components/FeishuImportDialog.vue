@@ -17,65 +17,41 @@
         show-icon
         class="mb16"
       />
-      <el-alert
-        v-else-if="!status.authorized"
-        type="warning"
-        :closable="false"
-        class="mb16"
-        title="需要授权飞书"
-      >
-        <template #default>
-          <div>导入飞书文档需要先完成授权。点击下方按钮前往飞书授权页面，授权完成后返回点击「刷新授权状态」。</div>
-          <div style="margin-top: 10px; display: flex; gap: 8px;">
-            <el-button type="primary" size="small" @click="openAuth">前往授权</el-button>
-            <el-button size="small" @click="loadStatus">刷新授权状态</el-button>
-          </div>
-        </template>
-      </el-alert>
-      <el-alert
-        v-else
-        type="info"
-        :closable="false"
-        class="mb16"
-        title="使用说明"
-      >
-        <template #default>
-          直接粘贴你有权限访问的飞书文档链接（docx 或 wiki）到下方即可导入，无需额外共享设置。
-        </template>
-      </el-alert>
 
-      <!-- 粘贴链接导入 -->
-      <div class="import-row">
-        <el-input
-          v-model="docUrl"
-          placeholder="粘贴飞书文档链接（支持 docx 与 wiki 链接）"
-          clearable
-          :disabled="importing || !status.authorized"
-          @keyup.enter="doImport"
-        >
-          <template #prepend>链接</template>
-        </el-input>
-        <el-button
-          type="primary"
-          :loading="importing"
-          :disabled="!docUrl.trim() || !status.authorized"
-          @click="doImport"
-        >
-          导入
-        </el-button>
-      </div>
-
-      <!-- 文件夹列表（可选） -->
-      <template v-if="status.folder_enabled && status.authorized">
-        <el-divider content-position="left">共享文件夹文档</el-divider>
-        <div v-if="docs.length" class="doc-list">
-          <div v-for="f in docs" :key="f.token" class="doc-item" @click="importFromList(f)">
-            <span class="doc-name">{{ f.name }}</span>
-            <span class="doc-time">{{ formatTime(f.modified_time) }}</span>
-            <el-button size="small" type="primary" link>导入</el-button>
-          </div>
+      <template v-else>
+        <!-- 未授权：直接引导授权 -->
+        <div v-if="!status.authorized">
+          <el-alert type="info" :closable="false" class="mb16" title="需要授权飞书以读取你的文档">
+            <template #default>
+              <div>点击「前往授权」跳转飞书授权，授权完成后将自动加载你本人云空间的文档，选择即可导入。</div>
+              <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                <el-button type="primary" size="small" @click="openAuth">前往授权</el-button>
+                <el-button size="small" @click="loadStatus">刷新状态</el-button>
+                <span v-if="waitingAuth" class="waiting">正在等待授权完成…</span>
+              </div>
+            </template>
+          </el-alert>
         </div>
-        <div v-else-if="!loadingDocs" class="empty-tip">文件夹内暂无可导入的 docx 文档</div>
+
+        <!-- 已授权：本人云空间文档列表 -->
+        <template v-else>
+          <div class="doc-section-title">我的飞书文档（点击右侧「导入」）</div>
+          <div v-if="docs.length" class="doc-list">
+            <div v-for="f in docs" :key="f.token" class="doc-item">
+              <span class="doc-name" :title="f.name">{{ f.name }}</span>
+              <span class="doc-time">{{ formatTime(f.modified_time) }}</span>
+              <el-button size="small" type="primary" link :disabled="importing" @click="importFromList(f)">
+                {{ importingToken === f.token ? '导入中…' : '导入' }}
+              </el-button>
+            </div>
+          </div>
+          <div v-else-if="!loadingDocs" class="empty-tip">
+            云空间暂无可导入的 docx 文档，请到飞书「我的空间」上传后再刷新
+          </div>
+          <div class="doc-refresh">
+            <el-button size="small" :loading="loadingDocs" @click="loadDocs">刷新文档列表</el-button>
+          </div>
+        </template>
       </template>
 
       <!-- 预览 -->
@@ -105,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getFeishuStatus, getFeishuAuthorizeUrl, listFeishuDocuments, importFeishuDocument } from '@/api/admin'
 
@@ -121,27 +97,74 @@ const visible = computed({
 })
 
 const status = ref({ configured: false, folder_enabled: false })
-const docUrl = ref('')
 const docs = ref([])
 const loadingDocs = ref(false)
 const importing = ref(false)
+const importingToken = ref('')
 const result = ref(null)
 const insertMode = ref('append')
 const fillTitle = ref(true)
+const waitingAuth = ref(false)
+
+let pollTimer = null
+let pollTicks = 0
+
+function clearPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+  pollTicks = 0
+  waitingAuth.value = false
+}
 
 watch(visible, (val) => {
   if (val) {
     result.value = null
-    loadStatus()
+    clearPoll()
+    loadStatus(true)
   }
 })
 
-async function loadStatus() {
+onBeforeUnmount(clearPoll)
+
+// 打开后：未授权 → 自动跳授权并轮询等待；已授权 → 直接加载文档
+async function loadStatus(autoAuth = false) {
   try {
     const { data } = await getFeishuStatus()
     status.value = data
-    if (data.authorized && data.folder_enabled) loadDocs()
-  } catch { /* 静默，导入时会再报错 */ }
+    if (data.authorized) {
+      clearPoll()
+      loadDocs()
+    } else if (autoAuth) {
+      startAutoAuth()
+    }
+  } catch { /* 静默 */ }
+}
+
+function startAutoAuth() {
+  // 自动弹出授权页 + 轮询等待授权完成
+  openAuth()
+  waitingAuth.value = true
+  clearPoll()
+  pollTicks = 0
+  pollTimer = setInterval(async () => {
+    pollTicks += 1
+    if (pollTicks > 45) { // 最多等 90 秒
+      clearPoll()
+      ElMessage.warning('授权等待超时，请点击「前往授权」重新授权')
+      return
+    }
+    try {
+      const { data } = await getFeishuStatus()
+      status.value = data
+      if (data.authorized) {
+        clearPoll()
+        ElMessage.success('飞书授权成功，已加载你的文档')
+        loadDocs()
+      }
+    } catch { /* 静默，继续轮询 */ }
+  }, 2000)
 }
 
 async function openAuth() {
@@ -161,15 +184,18 @@ async function loadDocs() {
     const { data } = await listFeishuDocuments()
     docs.value = data.files || []
   } catch (e) {
-    docs.value = []
+    if (e.response?.data?.need_auth) {
+      status.value.authorized = false
+      ElMessage.warning('飞书授权已过期，请重新授权')
+    } else {
+      docs.value = []
+    }
   } finally {
     loadingDocs.value = false
   }
 }
 
-async function doImport() {
-  const url = docUrl.value.trim()
-  if (!url) return
+async function doImport(url) {
   importing.value = true
   result.value = null
   try {
@@ -182,17 +208,20 @@ async function doImport() {
       ElMessage.warning('飞书授权已过期，请重新授权')
       status.value.authorized = false
     } else {
-      const msg = errorData?.detail || '导入失败，请检查链接是否正确'
+      const msg = errorData?.detail || '导入失败，请重试'
       ElMessage.error(msg)
     }
   } finally {
     importing.value = false
+    importingToken.value = ''
   }
 }
 
-function importFromList(file) {
-  docUrl.value = file.url || `https://feishu.cn/docx/${file.token}`
-  doImport()
+async function importFromList(file) {
+  if (importing.value) return
+  importingToken.value = file.token
+  const url = file.url || `https://feishu.cn/docx/${file.token}`
+  await doImport(url)
 }
 
 function confirmInsert() {
@@ -217,17 +246,15 @@ function formatTime(ts) {
   margin-bottom: 16px;
 }
 
-.import-row {
-  display: flex;
-  gap: 12px;
-}
-
-.import-row .el-input {
-  flex: 1;
+.doc-section-title {
+  font-size: 13px;
+  color: #606266;
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
 .doc-list {
-  max-height: 220px;
+  max-height: 280px;
   overflow-y: auto;
   border: 1px solid #ebeef5;
   border-radius: 4px;
@@ -238,7 +265,6 @@ function formatTime(ts) {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  cursor: pointer;
 }
 
 .doc-item:hover {
@@ -254,12 +280,23 @@ function formatTime(ts) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .doc-time {
   color: #909399;
   font-size: 12px;
   flex-shrink: 0;
+}
+
+.doc-refresh {
+  margin-top: 10px;
+  text-align: right;
+}
+
+.waiting {
+  color: #e6a23c;
+  font-size: 13px;
 }
 
 .empty-tip {

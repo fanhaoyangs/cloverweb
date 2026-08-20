@@ -4,25 +4,34 @@
  * 按钮仅作触发器：点击后调用 window.__UE_FEISHU_IMPORT__(editor)，
  * 由 Vue 层（UEditor.vue 注入）打开 Element Plus 导入对话框，
  * 导入完成后通过 editor.execCommand('insertHtml', html) 注入内容。
+ *
+ * 文案与样式对齐秀米按钮：工具栏直接显示「飞书」文字（12px，飞书蓝）。
  */
 (function () {
-  // 注入按钮图标（20x20，飞书蓝文档样式）
+  // 注入按钮文字样式（与 xiumi-ue-v5.css 的「秀米」同规格）
   if (!document.getElementById('feishu-import-btn-style')) {
     var style = document.createElement('style')
     style.id = 'feishu-import-btn-style'
     style.textContent = [
-      '.edui-for-feishuimport .edui-icon {',
-      '  background-image: url("data:image/svg+xml;charset=utf-8,' +
-        encodeURIComponent(
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">' +
-          '<path fill="#3370ff" d="M11.6 2H5.5A1.5 1.5 0 0 0 4 3.5v13A1.5 1.5 0 0 0 5.5 18h9a1.5 1.5 0 0 0 1.5-1.5V6.4L11.6 2z"/>' +
-          '<path fill="#c9d8ff" d="M11.2 3.4l3.4 3.4h-3.4V3.4z"/>' +
-          '<path fill="#fff" d="M9.4 15.3l-3.2-2.6 1-1 1.6 1.4V8.8h1.3v4.3l1.6-1.4 1 1z"/>' +
-          '</svg>'
-        ) + '");',
-      '  background-repeat: no-repeat;',
-      '  background-position: center;',
-      '  background-size: 16px 16px;',
+      '.edui-button.edui-for-feishuimport .edui-button-wrap .edui-button-body {',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '}',
+      '.edui-button.edui-for-feishuimport .edui-button-wrap .edui-button-body .edui-icon {',
+      '  background-image: none !important;',
+      '  width: auto !important;',
+      '  height: auto !important;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '  padding: 0 4px;',
+      '}',
+      '.edui-button.edui-for-feishuimport .edui-button-wrap .edui-button-body .edui-icon::before {',
+      '  content: "飞书";',
+      '  font-size: 12px;',
+      '  color: #3370ff;',
+      '  white-space: nowrap;',
       '}'
     ].join('\n')
     document.head.appendChild(style)

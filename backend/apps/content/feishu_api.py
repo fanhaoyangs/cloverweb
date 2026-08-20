@@ -3,13 +3,12 @@
 设计决策（v1.1 方案修正）：
 - 使用 user_access_token，用户通过 OAuth 授权后以用户身份访问文档
 - 不需要将文档共享给应用，符合"用户导入自己的文档"的直觉
-- 支持 docx 新版文档与 wiki 知识库链接（自动解析为 obj_token）
+- 支持 docx 新版文档链接（drive 云空间文件列表 + 图片下载）
 - 旧版 doc（/docs/ 链接）不支持，提示用户另存为 docx
 
 所需飞书应用权限（后台开通）：
 - docx:document:readonly  读取新版文档
-- drive:drive:readonly     云空间文件列表 / 图片下载
-- wiki:wiki:readonly       知识库节点解析
+- drive:drive:readonly    云空间文件列表 / 图片下载
 """
 import logging
 import re
@@ -30,8 +29,8 @@ TOKEN_URL = 'https://accounts.feishu.cn/oauth/v3/token'
 # - offline_access          离线访问（飞书仅在包含此 scope 时返回 refresh_token）
 # - docx:document:readonly  读取新版文档
 # - drive:drive:readonly    云空间文件列表 / 图片下载
-# - wiki:wiki:readonly      知识库节点解析
-IMPORT_SCOPES = 'offline_access docx:document:readonly drive:drive:readonly wiki:wiki:readonly'
+# （已取消 wiki 知识库授权：不再导入知识库，仅导入用户本人云空间 docx 文档）
+IMPORT_SCOPES = 'offline_access docx:document:readonly drive:drive:readonly'
 
 # token 失效/无权错误码（需重新授权）
 _TOKEN_INVALID_CODES = (99991672, 99991661, 99991663)

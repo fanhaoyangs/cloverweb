@@ -81,21 +81,15 @@ class FeishuStatusView(APIView):
 
 
 class FeishuDocumentsView(APIView):
-    """文件夹文档列表（用户需有该文件夹访问权限）。"""
+    """本人云空间文档列表（用户授权后可读的 docx 文档，供选择导入）。"""
 
     permission_classes = [AdminPermission]
 
     def get(self, request):
-        folder_token = getattr(settings, 'FEISHU_FOLDER_TOKEN', '')
-        if not folder_token:
-            return Response(
-                {'detail': '未配置 FEISHU_FOLDER_TOKEN，请直接粘贴文档链接导入'},
-                status=http.HTTP_400_BAD_REQUEST,
-            )
         try:
             user_token = feishu_api.get_valid_user_token(request.user)
             data = feishu_api.list_folder_files(
-                folder_token,
+                '',  # 空 folder_token → 列出用户「我的空间」根目录文档
                 user_token,
                 page_token=request.query_params.get('page_token', ''),
             )

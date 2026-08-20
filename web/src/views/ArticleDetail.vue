@@ -1,5 +1,10 @@
 <template>
   <div class="article-detail-page">
+    <!-- 封面：hero 式，置于标题上方，全宽 + 控制高度 -->
+    <div v-if="article && article.coverImage" class="article-hero">
+      <img :src="article.coverImage" :alt="article.title" />
+    </div>
+
     <div v-loading="loading" class="article-container">
       <template v-if="article">
         <div class="article-header">
@@ -9,10 +14,6 @@
             <span v-if="article.author" class="article-author">{{ article.author }}</span>
           </div>
           <h1 class="article-title">{{ article.title }}</h1>
-        </div>
-
-        <div v-if="article.coverImage" class="article-cover">
-          <img :src="article.coverImage" :alt="article.title" />
         </div>
 
         <div class="article-content" v-html="article.content"></div>
@@ -84,13 +85,29 @@ onMounted(() => {
 
 <style scoped>
 .article-detail-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 40px 20px;
+  min-height: 100vh;
+  background: #fff;
+}
+
+/* hero 封面：全宽、控制高度、cover 裁切、置于标题上方 */
+.article-hero {
+  width: 100%;
+  height: clamp(260px, 38vh, 420px);
+  overflow: hidden;
+  background: #eef1ee;
+}
+
+.article-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .article-container {
-  min-height: 400px;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
 }
 
 .article-header {
@@ -127,17 +144,6 @@ onMounted(() => {
   font-weight: 700;
   color: #333;
   line-height: 1.4;
-}
-
-.article-cover {
-  margin-bottom: 24px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.article-cover img {
-  width: 100%;
-  display: block;
 }
 
 .article-content {

@@ -199,6 +199,10 @@ function initEditor() {
     if (props.modelValue) {
       editor.setContent(props.modelValue)
     }
+    // 挂载图片裁剪插件（图片等比缩放 + 裁剪）
+    if (typeof window.__CLOVER_IMG_CROP__ === 'function') {
+      window.__CLOVER_IMG_CROP__(editor)
+    }
   })
 
   editor.addListener('contentChange', () => {
@@ -232,14 +236,21 @@ function loadUEditor() {
         feishuScript.src = '/UEditorPlus/dialogs/feishu-connect/feishu-ue-button.js'
         feishuScript.onerror = () => console.error('飞书导入按钮脚本加载失败')
         feishuScript.onload = () => {
-          nextTick(() => {
-            const scriptTag = document.createElement('script')
-            scriptTag.type = 'text/plain'
-            scriptTag.id = editorId
-            scriptTag.className = 'ueditor-script'
-            editorContainer.value.appendChild(scriptTag)
-            initEditor()
-          })
+          // 图片裁剪插件
+          const cropScript = document.createElement('script')
+          cropScript.src = '/UEditorPlus/dialogs/image-crop/image-crop.js'
+          cropScript.onerror = () => console.error('图片裁剪脚本加载失败')
+          cropScript.onload = () => {
+            nextTick(() => {
+              const scriptTag = document.createElement('script')
+              scriptTag.type = 'text/plain'
+              scriptTag.id = editorId
+              scriptTag.className = 'ueditor-script'
+              editorContainer.value.appendChild(scriptTag)
+              initEditor()
+            })
+          }
+          document.head.appendChild(cropScript)
         }
         document.head.appendChild(feishuScript)
       }
