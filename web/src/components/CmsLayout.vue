@@ -21,6 +21,23 @@
           <el-icon><Files /></el-icon>
           <span>静态页管理</span>
         </el-menu-item>
+        <template v-if="onSitepages">
+          <div class="sitepage-select">
+            <el-select
+              :model-value="currentPage"
+              placeholder="选择页面"
+              size="small"
+              @change="selectPage"
+            >
+              <el-option
+                v-for="p in sitepages"
+                :key="p.slug"
+                :label="pageLabel(p.slug)"
+                :value="p.slug"
+              />
+            </el-select>
+          </div>
+        </template>
         <!-- 不用 el-menu-item：其 click 事件无原生事件对象，.prevent 会崩；且 router 模式会把 SPA 路由推到空白页 -->
         <li class="el-menu-item django-admin-item" role="menuitem" @click="openDjangoAdmin">
           <el-icon><Setting /></el-icon>
@@ -50,14 +67,22 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { getUser, clearLogin } from '@/utils/auth'
+import { listSitePages } from '@/api/admin'
+import { sitepageStore } from '@/utils/sitepageStore'
 
 const route = useRoute()
 const router = useRouter()
 const user = getUser()
+
+const PAGE_NAMES = { home: '首页', about: '关于我们', philosophy: '理念路径', clover: '四叶草堂' }
+
+const sitepages = ref([])
+const onSitepages = computed(() => route.path.startsWith('/admin/sitepages'))
+const currentPage = computed(() => route.query.page || '')
 
 const activeMenu = computed(() => {
   if (route.path.startsWith('/admin/sitepages')) return '/admin/sitepages'
@@ -69,6 +94,43 @@ const pageTitle = computed(() => {
   if (route.path.startsWith('/admin/sitepages')) return '静态页管理'
   return '文章管理'
 })
+
+function pageLabel(slug) {
+  return PAGE_NAMES[slug] || slug
+}
+
+// 拉取一次页面列表并缓存；无 page 参数时默认选中 home
+async function loadPages() {
+  if (sitepageStore.pages.length) {
+    sitepages.value = sitepageStore.pages
+  } else {
+    const { data } = await listSitePages()
+    const arr = data.results || data
+    sitepageStore.pages = arr
+    sitepages.value = arr
+  }
+  if (!route.query.page && sitepages.value.length && route.path === '/admin/sitepages') {
+    const def = sitepages.value.find(p => p.slug === 'home') || sitepages.value[0]
+    router.replace({ path: '/admin/sitepages', query: { page: def.slug } })
+  }
+}
+
+watch(onSitepages, (v) => { if (v) loadPages() }, { immediate: true })
+
+// 切换页面：未保存时先确认
+async function selectPage(slug) {
+  if (slug === currentPage.value) return
+  if (sitepageStore.dirty) {
+    try {
+      await ElMessageBox.confirm('当前页面有未保存的修改，确定切换吗？', '提示', {
+        type: 'warning', confirmButtonText: '切换', cancelButtonText: '取消'
+      })
+    } catch {
+      return
+    }
+  }
+  router.push({ path: '/admin/sitepages', query: { page: slug } })
+}
 
 function openDjangoAdmin() {
   window.open('/django-admin/', '_blank')
@@ -129,6 +191,25 @@ function logout() {
 .cms-menu {
   border-right: none;
   flex: 1;
+}
+
+.sitepage-select {
+  padding: 8px 16px 16px;
+}
+.sitepage-select :deep(.el-select__wrapper) {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 28px;
+}
+.sitepage-select :deep(.el-select__placeholder) {
+  color: #8fa08f;
+}
+.sitepage-select :deep(.el-select__selected-item) {
+  color: #7bc47f;
+}
+.sitepage-select :deep(.el-select__caret) {
+  color: #c8d6c9;
 }
 
 .cms-aside-footer {

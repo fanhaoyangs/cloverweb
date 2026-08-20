@@ -27,3 +27,6 @@ web/.git-legacy-removed/
 # 环境变量
 .env
 backend/.env
+
+# 工具状态（助手工作目录，不入库）
+.thincoder/

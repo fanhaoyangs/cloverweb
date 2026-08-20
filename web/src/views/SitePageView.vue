@@ -141,13 +141,16 @@ async function load() {
  */
 async function injectAllSections() {
   const injections = SECTION_INJECTIONS[props.slug] || []
-  for (const cfg of injections) {
-    try {
-      await injectOne(cfg)
-    } catch (e) {
-      console.warn(`[sitepage] inject 失败 ${cfg.section}:`, e)
-    }
-  }
+  // 各板块容器互相独立（不同 selector），并行请求比串行更快；单项失败不影响其他
+  await Promise.all(
+    injections.map(async (cfg) => {
+      try {
+        await injectOne(cfg)
+      } catch (e) {
+        console.warn(`[sitepage] inject 失败 ${cfg.section}:`, e)
+      }
+    })
+  )
 }
 
 async function injectOne({ selector, section, prepend, cardTpl }) {
