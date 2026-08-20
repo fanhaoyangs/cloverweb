@@ -233,6 +233,11 @@
     cropViaServer(target.getAttribute('src') || target.src, sx, sy, sw, sh, function (newUrl) {
       if (target) {
         target.setAttribute('src', newUrl)
+        // 关键：必须同步更新 _src。UEditor 的 defaultfilter 输出规则在 getContent()
+        // 时会用 _src 覆盖 src（把 src 还原成初始原图地址）；若不同步，裁剪后的
+        // 新 URL 会在保存时被还原成原图，导致「保存后打开仍是原样」。参见 UEditor
+        // catchremoteimage 的同类处理：domUtils.setAttributes(ele, {src, _src})。
+        target.setAttribute('_src', newUrl)
         target.setAttribute('data-crop', '1')
       }
       editor.fireEvent('contentchange')
