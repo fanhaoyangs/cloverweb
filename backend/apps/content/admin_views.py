@@ -1,6 +1,8 @@
 """CMS 管理 API 视图（仅 is_staff，飞书登录用户 / superuser）。"""
 from django.db.models import Q
 from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.team.models import SitePage
 
@@ -80,3 +82,62 @@ class AdminSitePageDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [AdminPermission]
     queryset = SitePage.objects.all()
     lookup_field = 'slug'
+
+
+class AdminImageCropView(APIView):
+    """POST /api/admin/images/crop/ 服务端裁切图片并上传 COS。
+
+    入参：{url, x, y, width, height}（自然像素坐标）。服务端下载 → Pillow 裁切 →
+    上传 COS → 返回 {url}。彻底规避前端 canvas 的跨域(CORS)与同源图缓存问题。
+    """
+
+    permission_classes = [AdminPermission]
+
+    def post(self, request):
+        import io
+
+        import requests as http
+
+        from PIL import Image as PILImage
+
+        from apps.common import cos
+
+        url = (request.data.get('url') or '').strip()
+        try:
+            x = int(request.data.get('x'))
+            y = int(request.data.get('y'))
+            width = int(request.data.get('width'))
+            height = int(request.data.get('height'))
+        except (TypeError, ValueError):
+            return Response({'detail': '裁切参数无效'}, status=400)
+        if not url or width <= 0 or height <= 0:
+            return Response({'detail': '参数无效'}, status=400)
+
+        try:
+            resp = http.get(url, timeout=20, headers={'User-Agent': 'Mozilla/5.0 CloverWeb'})
+            if resp.status_code != 200:
+                return Response({'detail': f'下载图片失败 HTTP {resp.status_code}'}, status=502)
+            img = PILImage.open(io.BytesIO(resp.content))
+            img.load()
+        except Exception as exc:  # noqa: BLE001
+            return Response({'detail': f'图片解析失败: {exc}'}, status=400)
+
+        iw, ih = img.size
+        x = min(max(x, 0), iw)
+        y = min(max(y, 0), ih)
+        width = min(width, iw - x)
+        height = min(height, ih - y)
+        if width <= 0 or height <= 0:
+            return Response({'detail': '裁切区域超出图片范围'}, status=400)
+
+        cropped = img.crop((x, y, x + width, y + height))
+        buf = io.BytesIO()
+        cropped.save(buf, format='PNG')
+        try:
+            key = cos.build_object_key('images', '.png')
+            new_url = cos.upload_bytes(key, buf.getvalue(), 'image/png')
+        except cos.CosNotConfigured as exc:
+            return Response({'detail': str(exc)}, status=503)
+        except Exception as exc:  # noqa: BLE001
+            return Response({'detail': f'上传失败: {exc}'}, status=500)
+        return Response({'url': new_url})

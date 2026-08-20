@@ -13,12 +13,12 @@
     var style = document.createElement('style')
     style.id = 'feishu-import-btn-style'
     style.textContent = [
-      '.edui-button.edui-for-feishuimport .edui-button-wrap .edui-button-body {',
+      '.edui-button.edui-for-feishu-import .edui-button-wrap .edui-button-body {',
       '  display: flex;',
       '  align-items: center;',
       '  justify-content: center;',
       '}',
-      '.edui-button.edui-for-feishuimport .edui-button-wrap .edui-button-body .edui-icon {',
+      '.edui-button.edui-for-feishu-import .edui-button-wrap .edui-button-body .edui-icon {',
       '  background-image: none !important;',
       '  width: auto !important;',
       '  height: auto !important;',
@@ -27,7 +27,7 @@
       '  justify-content: center;',
       '  padding: 0 4px;',
       '}',
-      '.edui-button.edui-for-feishuimport .edui-button-wrap .edui-button-body .edui-icon::before {',
+      '.edui-button.edui-for-feishu-import .edui-button-wrap .edui-button-body .edui-icon::before {',
       '  content: "飞书";',
       '  font-size: 12px;',
       '  color: #3370ff;',

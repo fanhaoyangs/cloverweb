@@ -23,12 +23,13 @@
         <div v-if="!status.authorized">
           <el-alert type="info" :closable="false" class="mb16" title="需要授权飞书以读取你的文档">
             <template #default>
-              <div>点击「前往授权」跳转飞书授权，授权完成后将自动加载你本人云空间的文档，选择即可导入。</div>
+              <div>点击「前往授权」在新窗口完成飞书授权，返回后自动加载你本人云空间的文档。</div>
               <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
                 <el-button type="primary" size="small" @click="openAuth">前往授权</el-button>
                 <el-button size="small" @click="loadStatus">刷新状态</el-button>
                 <span v-if="waitingAuth" class="waiting">正在等待授权完成…</span>
               </div>
+              <div v-if="authError" class="auth-error">{{ authError }}</div>
             </template>
           </el-alert>
         </div>
@@ -105,6 +106,7 @@ const result = ref(null)
 const insertMode = ref('append')
 const fillTitle = ref(true)
 const waitingAuth = ref(false)
+const authError = ref('')
 
 let pollTimer = null
 let pollTicks = 0
@@ -128,7 +130,7 @@ watch(visible, (val) => {
 
 onBeforeUnmount(clearPoll)
 
-// 打开后：未授权 → 自动跳授权并轮询等待；已授权 → 直接加载文档
+// 打开后：未授权 → 自动弹授权窗口并轮询等待；已授权 → 直接加载文档
 async function loadStatus(autoAuth = false) {
   try {
     const { data } = await getFeishuStatus()
@@ -137,14 +139,27 @@ async function loadStatus(autoAuth = false) {
       clearPoll()
       loadDocs()
     } else if (autoAuth) {
-      startAutoAuth()
+      openAuth()   // 直接跳出授权（命名弹窗，不顶掉当前页）
     }
   } catch { /* 静默 */ }
 }
 
-function startAutoAuth() {
-  // 自动弹出授权页 + 轮询等待授权完成
-  openAuth()
+async function openAuth() {
+  authError.value = ''
+  try {
+    const { data } = await getFeishuAuthorizeUrl()
+    if (data.authorize_url) {
+      window.open(data.authorize_url, 'clover_feishu_auth', 'noopener')
+      startPolling()
+    } else {
+      authError.value = '未能获取授权链接，请稍后重试'
+    }
+  } catch (e) {
+    authError.value = e.response?.data?.detail || '获取授权链接失败'
+  }
+}
+
+function startPolling() {
   waitingAuth.value = true
   clearPoll()
   pollTicks = 0
@@ -152,7 +167,7 @@ function startAutoAuth() {
     pollTicks += 1
     if (pollTicks > 45) { // 最多等 90 秒
       clearPoll()
-      ElMessage.warning('授权等待超时，请点击「前往授权」重新授权')
+      authError.value = '授权等待超时，请再次点击「前往授权」'
       return
     }
     try {
@@ -165,17 +180,6 @@ function startAutoAuth() {
       }
     } catch { /* 静默，继续轮询 */ }
   }, 2000)
-}
-
-async function openAuth() {
-  try {
-    const { data } = await getFeishuAuthorizeUrl()
-    if (data.authorize_url) {
-      window.open(data.authorize_url, '_blank')
-    }
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '获取授权链接失败')
-  }
 }
 
 async function loadDocs() {
@@ -296,6 +300,12 @@ function formatTime(ts) {
 
 .waiting {
   color: #e6a23c;
+  font-size: 13px;
+}
+
+.auth-error {
+  margin-top: 8px;
+  color: #f56c6c;
   font-size: 13px;
 }
 

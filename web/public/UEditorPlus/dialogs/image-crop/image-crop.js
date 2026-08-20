@@ -225,45 +225,35 @@
     var target = currentImg
     var editor = currentEditor
     if (!target) return
-    var sx = sel.x / S, sy = sel.y / S, sw = sel.w / S, sh = sel.h / S
-    var cw = Math.round(sw), ch = Math.round(sh)
-    var canvas = document.createElement('canvas')
-    canvas.width = cw; canvas.height = ch
-    var ctx = canvas.getContext('2d')
-    var im = new Image()
-    im.crossOrigin = 'anonymous'
-    im.onload = function () {
-      ctx.drawImage(im, sx, sy, sw, sh, 0, 0, cw, ch)
-      try {
-        canvas.toBlob(function (blob) {
-          if (!blob) { alert('图片导出失败'); return }
-          uploadCrop(blob, function (url) {
-            if (target) {
-              target.setAttribute('src', url)
-              target.setAttribute('data-crop', '1')
-            }
-            editor.fireEvent('contentchange')
-            closeDialog()
-          })
-        }, 'image/png')
-      } catch (err) {
-        alert('裁剪失败（浏览器安全限制，可能是图片跨域导致）：' + err.message)
+    // 选区显示坐标 → 原图自然像素坐标
+    var sx = Math.round(sel.x / S), sy = Math.round(sel.y / S)
+    var sw = Math.round(sel.w / S), sh = Math.round(sel.h / S)
+    if (sw < 1 || sh < 1) { alert('裁剪区域太小'); return }
+
+    cropViaServer(target.getAttribute('src') || target.src, sx, sy, sw, sh, function (newUrl) {
+      if (target) {
+        target.setAttribute('src', newUrl)
+        target.setAttribute('data-crop', '1')
       }
-    }
-    im.onerror = function () { alert('图片加载失败') }
-    im.src = target.getAttribute('src') || target.src
+      editor.fireEvent('contentchange')
+      closeDialog()
+    })
   }
 
-  function uploadCrop(blob, ok) {
-    var fd = new FormData()
-    fd.append('upfile', blob, 'crop.png')
-    fetch('/api/ueditor/?action=uploadimage', { method: 'POST', body: fd })
-      .then(function (r) { return r.json() })
+  // 服务端裁切 + 上传 COS（规避前端 canvas 的跨域限制与同源图缓存问题）
+  function cropViaServer(url, x, y, w, h, ok) {
+    var token = localStorage.getItem('cms_token') || ''
+    fetch('/api/admin/images/crop/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ url: url, x: x, y: y, width: w, height: h })
+    })
+      .then(function (r) { return r.json().catch(function () { return {} }) })
       .then(function (d) {
-        if (d.state === 'SUCCESS') ok(d.url)
-        else alert('上传失败：' + (d.message || '未知错误'))
+        if (d.url) ok(d.url)
+        else alert('裁剪失败：' + (d.detail || '未知错误'))
       })
-      .catch(function (e) { alert('上传失败：' + e.message) })
+      .catch(function (e) { alert('裁剪请求失败：' + e.message) })
   }
 
   // ---------- 编辑器挂载 ----------
