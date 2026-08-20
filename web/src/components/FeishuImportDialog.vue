@@ -8,50 +8,53 @@
     append-to-body
   >
     <div v-loading="loadingDocs" class="feishu-import">
-      <el-alert
-        v-if="!status.configured"
-        type="warning"
-        :closable="false"
-        title="飞书应用未配置"
-        description="请联系管理员在 backend/.env 配置 FEISHU_APP_ID / FEISHU_APP_SECRET，并在飞书开放平台开通 docx / drive 读取权限。"
-        show-icon
-        class="mb16"
-      />
+      <!-- 状态未加载完成前不渲染告警/列表，避免首次打开的闪烁 -->
+      <template v-if="statusLoaded">
+        <el-alert
+          v-if="!status.configured"
+          type="warning"
+          :closable="false"
+          title="飞书应用未配置"
+          description="请联系管理员在 backend/.env 配置 FEISHU_APP_ID / FEISHU_APP_SECRET，并在飞书开放平台开通 docx / drive 读取权限。"
+          show-icon
+          class="mb16"
+        />
 
-      <template v-else>
-        <!-- 未授权：直接引导授权 -->
-        <div v-if="!status.authorized">
-          <el-alert type="info" :closable="false" class="mb16" title="需要授权飞书以读取你的文档">
-            <template #default>
-              <div>点击「前往授权」在新窗口完成飞书授权，返回后自动加载你本人云空间的文档。</div>
-              <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-                <el-button type="primary" size="small" @click="openAuth">前往授权</el-button>
-                <el-button size="small" @click="loadStatus">刷新状态</el-button>
-                <span v-if="waitingAuth" class="waiting">正在等待授权完成…</span>
-              </div>
-              <div v-if="authError" class="auth-error">{{ authError }}</div>
-            </template>
-          </el-alert>
-        </div>
-
-        <!-- 已授权：本人云空间文档列表 -->
         <template v-else>
-          <div class="doc-section-title">我的飞书文档（点击右侧「导入」）</div>
-          <div v-if="docs.length" class="doc-list">
-            <div v-for="f in docs" :key="f.token" class="doc-item">
-              <span class="doc-name" :title="f.name">{{ f.name }}</span>
-              <span class="doc-time">{{ formatTime(f.modified_time) }}</span>
-              <el-button size="small" type="primary" link :disabled="importing" @click="importFromList(f)">
-                {{ importingToken === f.token ? '导入中…' : '导入' }}
-              </el-button>
+          <!-- 未授权：直接引导授权 -->
+          <div v-if="!status.authorized">
+            <el-alert type="info" :closable="false" class="mb16" title="需要授权飞书以读取你的文档">
+              <template #default>
+                <div>点击「前往授权」在新窗口完成飞书授权，返回后自动加载你本人云空间的文档。</div>
+                <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+                  <el-button type="primary" size="small" @click="openAuth">前往授权</el-button>
+                  <el-button size="small" @click="loadStatus">刷新状态</el-button>
+                  <span v-if="waitingAuth" class="waiting">正在等待授权完成…</span>
+                </div>
+                <div v-if="authError" class="auth-error">{{ authError }}</div>
+              </template>
+            </el-alert>
+          </div>
+
+          <!-- 已授权：本人云空间文档列表 -->
+          <template v-else>
+            <div class="doc-section-title">我的飞书文档（点击右侧「导入」）</div>
+            <div v-if="docs.length" class="doc-list">
+              <div v-for="f in docs" :key="f.token" class="doc-item">
+                <span class="doc-name" :title="f.name">{{ f.name }}</span>
+                <span class="doc-time">{{ formatTime(f.modified_time) }}</span>
+                <el-button size="small" type="primary" link :disabled="importing" @click="importFromList(f)">
+                  {{ importingToken === f.token ? '导入中…' : '导入' }}
+                </el-button>
+              </div>
             </div>
-          </div>
-          <div v-else-if="!loadingDocs" class="empty-tip">
-            云空间暂无可导入的 docx 文档，请到飞书「我的空间」上传后再刷新
-          </div>
-          <div class="doc-refresh">
-            <el-button size="small" :loading="loadingDocs" @click="loadDocs">刷新文档列表</el-button>
-          </div>
+            <div v-else-if="!loadingDocs" class="empty-tip">
+              云空间暂无可导入的 docx 文档，请到飞书「我的空间」上传后再刷新
+            </div>
+            <div class="doc-refresh">
+              <el-button size="small" :loading="loadingDocs" @click="loadDocs">刷新文档列表</el-button>
+            </div>
+          </template>
         </template>
       </template>
 
@@ -98,6 +101,7 @@ const visible = computed({
 })
 
 const status = ref({ configured: false, folder_enabled: false })
+const statusLoaded = ref(false)
 const docs = ref([])
 const loadingDocs = ref(false)
 const importing = ref(false)
@@ -123,6 +127,7 @@ function clearPoll() {
 watch(visible, (val) => {
   if (val) {
     result.value = null
+    statusLoaded.value = false
     clearPoll()
     loadStatus(true)
   }
@@ -135,13 +140,16 @@ async function loadStatus(autoAuth = false) {
   try {
     const { data } = await getFeishuStatus()
     status.value = data
+    statusLoaded.value = true
     if (data.authorized) {
       clearPoll()
       loadDocs()
     } else if (autoAuth) {
       openAuth()   // 直接跳出授权（命名弹窗，不顶掉当前页）
     }
-  } catch { /* 静默 */ }
+  } catch {
+    statusLoaded.value = true
+  }
 }
 
 async function openAuth() {

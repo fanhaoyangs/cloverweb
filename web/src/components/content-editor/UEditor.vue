@@ -251,7 +251,7 @@ function initEditor() {
     attachResizeHandle(editor)
   })
 
-  editor.addListener('contentChange', () => {
+  editor.addListener('contentchange', () => {
     if (isReplacingImages) return
     const content = editor.getContent()
     emit('update:modelValue', content)
