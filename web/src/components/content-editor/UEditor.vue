@@ -157,6 +157,50 @@ function triggerCatchRemoteImage() {
   }
 }
 
+const RESIZE_KEY = 'clover_ueditor_height'
+
+function setEditorHeight(ed, h) {
+  if (ed.iframe) {
+    ed.iframe.style.height = h + 'px'
+    if (ed.iframe.parentNode) ed.iframe.parentNode.style.height = h + 'px'
+  }
+  localStorage.setItem(RESIZE_KEY, String(h))
+}
+
+// 底边拖拽调高编辑器
+function attachResizeHandle(ed) {
+  const dom = ed.ui && ed.ui.getDom()
+  if (!dom || dom.querySelector('.clover-ueditor-resize')) return
+
+  // 恢复上次保存的高度
+  const saved = parseInt(localStorage.getItem(RESIZE_KEY) || '0', 10)
+  if (saved >= 200) setEditorHeight(ed, saved)
+
+  const bar = document.createElement('div')
+  bar.className = 'clover-ueditor-resize'
+  bar.title = '拖动调整编辑器高度'
+  dom.appendChild(bar)
+
+  bar.addEventListener('mousedown', (e) => {
+    e.preventDefault()
+    const startY = e.clientY
+    const holder = ed.iframe && ed.iframe.parentNode
+    const startH = holder ? holder.offsetHeight : (ed.iframe ? ed.iframe.offsetHeight : props.height)
+    const move = (ev) => {
+      const h = Math.max(200, Math.min(1400, startH + (ev.clientY - startY)))
+      setEditorHeight(ed, h)
+    }
+    const up = () => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+      document.body.style.userSelect = ''
+    }
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
+  })
+}
+
 function initEditor() {
   if (typeof window.UE === 'undefined') {
     console.error('UEditor未加载')
@@ -203,6 +247,8 @@ function initEditor() {
     if (typeof window.__CLOVER_IMG_CROP__ === 'function') {
       window.__CLOVER_IMG_CROP__(editor)
     }
+    // 底边拖拽调整编辑器高度
+    attachResizeHandle(editor)
   })
 
   editor.addListener('contentChange', () => {
@@ -296,5 +342,20 @@ defineExpose({
 <style scoped>
 .ueditor-wrapper {
   line-height: normal;
+}
+</style>
+
+<style>
+/* 底边拖拽调高手柄（动态注入 UEditor DOM，须全局） */
+.clover-ueditor-resize {
+  height: 8px;
+  cursor: row-resize;
+  background: transparent;
+  border-radius: 0 0 4px 4px;
+  transition: background 0.2s;
+}
+.clover-ueditor-resize:hover,
+.clover-ueditor-resize:active {
+  background: #cfe3d0;
 }
 </style>

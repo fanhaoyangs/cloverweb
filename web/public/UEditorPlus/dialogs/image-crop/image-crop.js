@@ -221,6 +221,10 @@
   }
 
   function doCrop() {
+    // 关键：在异步前捕获目标 img 与 editor 引用，避免回调时 currentImg 被置空
+    var target = currentImg
+    var editor = currentEditor
+    if (!target) return
     var sx = sel.x / S, sy = sel.y / S, sw = sel.w / S, sh = sel.h / S
     var cw = Math.round(sw), ch = Math.round(sh)
     var canvas = document.createElement('canvas')
@@ -234,9 +238,11 @@
         canvas.toBlob(function (blob) {
           if (!blob) { alert('图片导出失败'); return }
           uploadCrop(blob, function (url) {
-            currentImg.setAttribute('src', url)
-            currentImg.setAttribute('data-crop', '1')
-            currentEditor.fireEvent('contentchange')
+            if (target) {
+              target.setAttribute('src', url)
+              target.setAttribute('data-crop', '1')
+            }
+            editor.fireEvent('contentchange')
             closeDialog()
           })
         }, 'image/png')
@@ -245,7 +251,7 @@
       }
     }
     im.onerror = function () { alert('图片加载失败') }
-    im.src = currentImg.getAttribute('src') || currentImg.src
+    im.src = target.getAttribute('src') || target.src
   }
 
   function uploadCrop(blob, ok) {
