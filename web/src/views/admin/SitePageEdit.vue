@@ -45,7 +45,6 @@
             <el-button :loading="saving" @click="save()">保存</el-button>
             <el-button :loading="saving" @click="save('draft')">存草稿</el-button>
             <el-button type="success" :loading="saving" @click="save('published')">发布</el-button>
-            <el-button type="warning" plain :loading="saving" @click="save('archived')">撤下</el-button>
             <el-button type="danger" plain :loading="saving" @click="removePage">删除</el-button>
             <el-button @click="openFront">打开前台新页</el-button>
             <span class="dirty-tip" v-if="dirty">● 有未保存修改</span>
@@ -96,8 +95,7 @@ const router = useRouter()
 
 const STATUS_META = {
   draft: { label: '草稿', tag: 'warning' },
-  published: { label: '已发布', tag: 'success' },
-  archived: { label: '已撤下', tag: 'info' }
+  published: { label: '已发布', tag: 'success' }
 }
 
 // 常用 HTML 代码片段
@@ -181,9 +179,20 @@ const frameStyle = computed(() => ({
 
 // 预览文档：content_html 自带 <style>，用薄 HTML 壳包裹即可贴近前台渲染
 // 同时注入 data-hx-offset，实现"编辑区↔预览"双向光标联动
+// 打字时每键都重算索引+DOMParser+重载 iframe 太重，300ms 防抖后再刷新预览
 const previewIframe = ref(null)
-const htmlIndex = computed(() => buildHtmlIndex(form.value?.content_html || ''))
-const previewDoc = computed(() => buildPreviewDoc(form.value?.content_html || '', htmlIndex.value))
+const debouncedHtml = ref('')
+let previewTimer = 0
+watch(
+  () => form.value?.content_html,
+  (v) => {
+    clearTimeout(previewTimer)
+    previewTimer = setTimeout(() => { debouncedHtml.value = v || '' }, 300)
+  },
+  { immediate: true }
+)
+const htmlIndex = computed(() => buildHtmlIndex(debouncedHtml.value))
+const previewDoc = computed(() => buildPreviewDoc(debouncedHtml.value, htmlIndex.value))
 
 // 扫描 HTML：按文档序记录每个开标签在源码中的起始 offset（跳过 void/自闭合标签）
 // 注意：style/script 等会被 DOMParser 移到 <head>，为对齐 body 元素计数需一并跳过
@@ -303,12 +312,24 @@ function onPreviewMessage(e) {
 }
 
 onMounted(() => {
-  unregisterCursor = editorRef.value?.onCursorChange?.(onEditorCursorThrottled)
   window.addEventListener('message', onPreviewMessage)
 })
 onBeforeUnmount(() => {
+  clearTimeout(previewTimer)
   unregisterCursor && unregisterCursor()
   window.removeEventListener('message', onPreviewMessage)
+})
+
+// 编辑器在 v-if="form" 内，挂载晚于本组件且切换页面会重建：
+// 不能在 onMounted 注册，需 watch 组件实例就绪后再挂光标监听
+watch(editorRef, (inst) => {
+  if (unregisterCursor) {
+    unregisterCursor()
+    unregisterCursor = null
+  }
+  if (inst) {
+    unregisterCursor = inst.onCursorChange(onEditorCursorThrottled)
+  }
 })
 
 function insertSnippet(html) {

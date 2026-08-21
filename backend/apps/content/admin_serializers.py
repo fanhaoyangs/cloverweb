@@ -76,6 +76,26 @@ class ArticleAdminSerializer(serializers.ModelSerializer):
 RESERVED_SLUGS = {'news', 'admin', 'login-callback'}
 
 
+class ArticleAdminListSerializer(ArticleAdminSerializer):
+    """文章列表：不含 content_html（列表页不显示正文，避免单次响应数 MB）。"""
+
+    class Meta(ArticleAdminSerializer.Meta):
+        fields = tuple(f for f in ArticleAdminSerializer.Meta.fields if f != 'content_html')
+
+
+class SitePageAdminListSerializer(serializers.ModelSerializer):
+    """静态页列表：不含 content_html（编辑时单独拉详情）。"""
+
+    class Meta:
+        model = SitePage
+        fields = (
+            'slug', 'title', 'status',
+            'in_menu', 'menu_label', 'menu_order',
+            'created_at', 'updated_at',
+        )
+        read_only_fields = ('created_at', 'updated_at')
+
+
 class SitePageAdminSerializer(serializers.ModelSerializer):
     """静态页管理（slug/title/content_html/status/菜单字段 可写）。"""
 

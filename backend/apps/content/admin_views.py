@@ -8,8 +8,10 @@ from apps.team.models import SitePage
 
 from .admin_serializers import (
     RESERVED_SLUGS,
+    ArticleAdminListSerializer,
     ArticleAdminSerializer,
     CategoryAdminSerializer,
+    SitePageAdminListSerializer,
     SitePageAdminSerializer,
 )
 from .models import Article, Category
@@ -23,10 +25,14 @@ class AdminPermission(permissions.BasePermission):
 class AdminArticleListView(generics.ListCreateAPIView):
     """GET /api/admin/articles/?status=&search=&category=&page=
     POST /api/admin/articles/（author 自动取当前用户）
+    列表不含 content_html（列表页不显示正文，大幅减小响应）。
     """
 
     serializer_class = ArticleAdminSerializer
     permission_classes = [AdminPermission]
+
+    def get_serializer_class(self):
+        return ArticleAdminListSerializer if self.request.method == 'GET' else ArticleAdminSerializer
 
     def get_queryset(self):
         qs = Article.objects.select_related('category', 'author').prefetch_related('tags')
@@ -73,11 +79,15 @@ class AdminCategoryListView(generics.ListCreateAPIView):
 class AdminSitePageListView(generics.ListCreateAPIView):
     """GET /api/admin/sitepages/?status=
     POST /api/admin/sitepages/（slug 缺省按 title 自动生成）
+    列表不含 content_html（编辑时单独拉详情）。
     """
 
     serializer_class = SitePageAdminSerializer
     permission_classes = [AdminPermission]
     queryset = SitePage.objects.all().order_by('menu_order', 'created_at', 'id')
+
+    def get_serializer_class(self):
+        return SitePageAdminListSerializer if self.request.method == 'GET' else SitePageAdminSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
