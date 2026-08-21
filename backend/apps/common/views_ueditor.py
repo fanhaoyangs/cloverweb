@@ -172,8 +172,54 @@ def handle_catchimage(request):
     return JsonResponse({'state': 'SUCCESS', 'list': results})
 
 
+# ---- 图片压缩（秀米等远程图转存时压缩，控制流量）----
+IMAGE_MAX_WIDTH = 1280   # 宽度超此值等比缩放
+IMAGE_JPEG_QUALITY = 80  # JPEG 质量（0-100）
+_ANIMATED_EXTS = {'.gif'}  # 动图跳过压缩，保持动画
+
+
+def _ext_for_mime(mime, fallback='.jpg'):
+    # 仅映射压缩后实际转换的格式；GIF 等未转换的保持原扩展名
+    if mime == 'image/jpeg':
+        return '.jpg'
+    if mime == 'image/png':
+        return '.png'
+    return fallback
+
+
+def _compress_image(data: bytes, ext: str):
+    """压缩图片字节，返回 (bytes, mime)。压缩失败/动图/非图片则原样返回。"""
+    import io
+
+    from PIL import Image as PILImage
+
+    if ext in _ANIMATED_EXTS:
+        return data, _guess_mime('x' + ext)
+    try:
+        img = PILImage.open(io.BytesIO(data))
+        img.load()
+    except Exception:
+        logger.warning('远程图片解析失败，按原图转存', exc_info=True)
+        return data, _guess_mime('x' + ext)
+
+    if img.width > IMAGE_MAX_WIDTH:
+        ratio = IMAGE_MAX_WIDTH / img.width
+        img = img.resize((IMAGE_MAX_WIDTH, max(1, round(img.height * ratio))), PILImage.LANCZOS)
+
+    # 含透明通道的 PNG 保留 PNG（否则转 JPEG 会变黑底）
+    if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return buf.getvalue(), 'image/png'
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    buf = io.BytesIO()
+    img.save(buf, format='JPEG', quality=IMAGE_JPEG_QUALITY, optimize=True)
+    return buf.getvalue(), 'image/jpeg'
+
+
 def _catch_one(remote_url):
-    """下载单张远程图片并转存 COS。失败返回 None。"""
+    """下载单张远程图片 → 压缩 → 转存 COS。失败返回 None。"""
     parsed = urlparse(remote_url)
     if parsed.scheme not in ('http', 'https') or not parsed.netloc:
         return None
@@ -188,8 +234,9 @@ def _catch_one(remote_url):
         data = resp.content
         if len(data) > IMAGE_MAX_SIZE:
             return None
-        key = cos.build_object_key('images', ext)
-        url = cos.upload_bytes(key, data, _guess_mime(name))
+        data, mime = _compress_image(data, ext)
+        key = cos.build_object_key('images', _ext_for_mime(mime, ext))
+        url = cos.upload_bytes(key, data, mime)
     except Exception:
         logger.warning('UEditor 远程图片抓取失败: %s', remote_url, exc_info=True)
         return None

@@ -70,7 +70,7 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <p>©2025 上海市杨浦四叶草堂社区规划设计营造促进中心 | <a href="https://beian.miit.gov.cn/" target="_blank">沪ICP备2023004347号-1</a></p>
+        <p>©2025 上海市杨浦四叶草堂社区规划设计营造促进中心 | <a href="https://beian.miit.gov.cn/" target="_blank">沪ICP备2023004347号-1</a> | <a href="https://beian.mps.gov.cn/#/query/webSearch?code=31011002007635" target="_blank"><img src="https://images.communitygarden.org.cn/communitygarden/备案图标.png" alt="公安备案" class="beian-logo">沪公网安备31011002007635号</a></p>
       </div>
     </div>
   </footer>
@@ -255,6 +255,14 @@ footer {
 .footer-bottom a {
   color: var(--white);
   text-decoration: none;
+}
+
+/* 公安备案图标：若底图带色需去白，可加 filter: brightness(0) invert(1) */
+.beian-logo {
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 4px;
+  opacity: 0.95;
 }
 
 /* 响应式 */

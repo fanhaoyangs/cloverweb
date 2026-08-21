@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from apps.team.models import SitePage
 
 from .admin_serializers import (
+    RESERVED_SLUGS,
     ArticleAdminSerializer,
     CategoryAdminSerializer,
     SitePageAdminSerializer,
@@ -69,19 +70,47 @@ class AdminCategoryListView(generics.ListCreateAPIView):
             serializer.save()
 
 
-class AdminSitePageListView(generics.ListAPIView):
+class AdminSitePageListView(generics.ListCreateAPIView):
+    """GET /api/admin/sitepages/?status=
+    POST /api/admin/sitepages/（slug 缺省按 title 自动生成）
+    """
+
     serializer_class = SitePageAdminSerializer
     permission_classes = [AdminPermission]
-    queryset = SitePage.objects.all().order_by('slug')
+    queryset = SitePage.objects.all().order_by('menu_order', 'created_at', 'id')
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    def perform_create(self, serializer):
+        from django.utils.text import slugify
+
+        slug = serializer.validated_data.get('slug')
+        if not slug:
+            base = slugify(serializer.validated_data.get('title') or '') or 'page'
+            slug, i = base, 1
+            while SitePage.objects.filter(slug=slug).exists() or slug in RESERVED_SLUGS:
+                i += 1
+                slug = f'{base}-{i}'
+        serializer.save(slug=slug[:64], updated_by=self.request.user)
 
 
-class AdminSitePageDetailView(generics.RetrieveUpdateAPIView):
-    """PUT /api/admin/sitepages/<slug>/ 更新 title / content_html。"""
+class AdminSitePageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PUT/PATCH/DELETE /api/admin/sitepages/<slug>/
+    状态：草稿(draft)/已发布(published)/已撤下(archived)；DELETE 物理删除。
+    """
 
     serializer_class = SitePageAdminSerializer
     permission_classes = [AdminPermission]
     queryset = SitePage.objects.all()
     lookup_field = 'slug'
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
 
 
 class AdminImageCropView(APIView):
@@ -131,11 +160,19 @@ class AdminImageCropView(APIView):
             return Response({'detail': '裁切区域超出图片范围'}, status=400)
 
         cropped = img.crop((x, y, x + width, y + height))
+        # 透明图保留 PNG，其余转 JPEG（与 views_ueditor._compress_image 策略一致），避免照片裁切后体积暴增
         buf = io.BytesIO()
-        cropped.save(buf, format='PNG')
+        if cropped.mode in ('RGBA', 'LA') or (cropped.mode == 'P' and 'transparency' in cropped.info):
+            cropped.save(buf, format='PNG')
+            ext, mime = '.png', 'image/png'
+        else:
+            if cropped.mode != 'RGB':
+                cropped = cropped.convert('RGB')
+            cropped.save(buf, format='JPEG', quality=80, optimize=True)
+            ext, mime = '.jpg', 'image/jpeg'
         try:
-            key = cos.build_object_key('images', '.png')
-            new_url = cos.upload_bytes(key, buf.getvalue(), 'image/png')
+            key = cos.build_object_key('images', ext)
+            new_url = cos.upload_bytes(key, buf.getvalue(), mime)
         except cos.CosNotConfigured as exc:
             return Response({'detail': str(exc)}, status=503)
         except Exception as exc:  # noqa: BLE001

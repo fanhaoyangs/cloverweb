@@ -12,10 +12,13 @@
       </template>
     </div>
     <ul class="nav-links" :class="{ active: mobileMenuOpen }" ref="navLinksRef">
-      <li><router-link to="/" :class="{ active: $route.path === '/' }">花开中国</router-link></li>
-      <li><router-link to="/philosophy" :class="{ active: $route.path === '/philosophy' }">理念路径</router-link></li>
+      <li v-for="p in menuPages" :key="p.slug">
+        <router-link :to="p.slug === 'home' ? '/' : `/${p.slug}`" :class="{ active: isActive(p.slug) }">
+          {{ p.menu_label || p.title || p.slug }}
+        </router-link>
+      </li>
+      <!-- 资讯分享为文章列表页，固定展示 -->
       <li><router-link to="/news" :class="{ active: $route.path === '/news' }">资讯分享</router-link></li>
-      <li><router-link to="/clover" :class="{ active: $route.path === '/clover' }">关于我们</router-link></li>
     </ul>
     <div class="mobile-menu-btn" :class="{ active: mobileMenuOpen }" @click="toggleMobileMenu" ref="mobileMenuBtnRef">
       <span></span>
@@ -28,6 +31,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listSitePagesPublic } from '@/api/sitepage'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,6 +40,26 @@ const navbarRef = ref(null)
 const navLinksRef = ref(null)
 const mobileMenuBtnRef = ref(null)
 const mobileMenuOpen = ref(false)
+
+// 一级导航：已发布且 in_menu 的静态页（按 menu_order 排序）
+const menuPages = ref([])
+// 接口异常时的兜底导航（与 0003 迁移的存量菜单一致），避免导航整体消失
+const FALLBACK_MENU = [
+  { slug: 'home', menu_label: '花开中国', title: '花开中国' },
+  { slug: 'philosophy', menu_label: '理念路径', title: '理念路径' },
+  { slug: 'clover', menu_label: '关于我们', title: '关于我们' }
+]
+async function loadMenu() {
+  try {
+    menuPages.value = await listSitePagesPublic()
+  } catch {
+    menuPages.value = FALLBACK_MENU
+  }
+}
+
+function isActive(slug) {
+  return slug === 'home' ? route.path === '/' : route.path === `/${slug}`
+}
 
 const pageType = computed(() => {
   if (route.path === '/') return 'home'
@@ -76,6 +100,7 @@ const handleClickOutside = (e) => {
 }
 
 onMounted(() => {
+  loadMenu()
   window.addEventListener('scroll', handleScroll)
   document.addEventListener('click', handleClickOutside)
 })

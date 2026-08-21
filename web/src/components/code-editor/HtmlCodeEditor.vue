@@ -14,9 +14,10 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection, rectangularSelection } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
+import { EditorState, EditorSelection } from '@codemirror/state'
 import { html } from '@codemirror/lang-html'
 import { indentWithTab, defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands'
+import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from '@codemirror/search'
 import {
   syntaxHighlighting, defaultHighlightStyle, bracketMatching,
   indentOnInput, foldGutter, foldKeymap
@@ -44,6 +45,12 @@ function syncCursor(state) {
   col.value = head - line.from + 1
 }
 
+// 光标位置订阅（供外部做"编辑区↔预览"联动）
+const cursorListeners = new Set()
+function notifyCursor(pos) {
+  cursorListeners.forEach((fn) => fn(pos))
+}
+
 function buildState(content) {
   return EditorState.create({
     doc: content,
@@ -62,11 +69,17 @@ function buildState(content) {
         indentWithTab,
         ...defaultKeymap,
         ...historyKeymap,
-        ...foldKeymap
+        ...foldKeymap,
+        ...searchKeymap
       ]),
+      search({ top: true }),
+      highlightSelectionMatches(),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           emit('update:modelValue', update.state.doc.toString())
+        }
+        if (update.selectionSet || update.docChanged) {
+          notifyCursor(update.state.selection.main.head)
         }
         syncCursor(update.state)
       })
@@ -102,6 +115,34 @@ defineExpose({
   focus: () => view.value?.focus(),
   undo: () => view.value && undo(view.value),
   redo: () => view.value && redo(view.value),
+  // 打开搜索/替换面板（Ctrl+F / Ctrl+H 快捷键同样可用）
+  openSearch: () => {
+    if (!view.value) return
+    openSearchPanel(view.value)
+    const field = view.value.dom.querySelector('.cm-search input:not([name="replace"])')
+    field && field.focus()
+  },
+  openReplace: () => {
+    if (!view.value) return
+    openSearchPanel(view.value)
+    const field = view.value.dom.querySelector('.cm-search input[name="replace"]')
+    field && field.focus()
+  },
+  // 光标联动接口
+  getCursorOffset: () => (view.value ? view.value.state.selection.main.head : 0),
+  setCursorOffset: (offset) => {
+    if (!view.value) return
+    const pos = Math.min(Math.max(0, offset), view.value.state.doc.length)
+    view.value.dispatch({
+      selection: { anchor: pos, head: pos },
+      effects: EditorView.scrollIntoView(EditorSelection.cursor(pos), { y: 'center' })
+    })
+    view.value.focus()
+  },
+  onCursorChange: (fn) => {
+    cursorListeners.add(fn)
+    return () => cursorListeners.delete(fn)
+  },
   insertSnippet: (text) => {
     if (!view.value) return
     const { from, to } = view.value.state.selection.main

@@ -32,10 +32,11 @@
               <el-option
                 v-for="p in sitepages"
                 :key="p.slug"
-                :label="pageLabel(p.slug)"
+                :label="pageLabel(p)"
                 :value="p.slug"
               />
             </el-select>
+            <el-button size="small" type="primary" class="new-page-btn" @click="createPage">＋ 新建页面</el-button>
           </div>
         </template>
         <!-- 不用 el-menu-item：其 click 事件无原生事件对象，.prevent 会崩；且 router 模式会把 SPA 路由推到空白页 -->
@@ -67,18 +68,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, h } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage, ElInput } from 'element-plus'
 import { getUser, clearLogin } from '@/utils/auth'
-import { listSitePages } from '@/api/admin'
+import { listSitePages, createSitePage } from '@/api/admin'
 import { sitepageStore } from '@/utils/sitepageStore'
 
 const route = useRoute()
 const router = useRouter()
 const user = getUser()
-
-const PAGE_NAMES = { home: '首页', about: '关于我们', philosophy: '理念路径', clover: '四叶草堂' }
 
 const sitepages = ref([])
 const onSitepages = computed(() => route.path.startsWith('/admin/sitepages'))
@@ -95,8 +94,66 @@ const pageTitle = computed(() => {
   return '文章管理'
 })
 
-function pageLabel(slug) {
-  return PAGE_NAMES[slug] || slug
+function pageLabel(p) {
+  return p.menu_label || p.title || p.slug
+}
+
+// 新建静态页（草稿），随后跳转编辑；标题必填，地址选填（留空按标题自动生成）
+async function createPage() {
+  const title = ref('')
+  const slug = ref('')
+  const labelStyle = 'font-size:12px;color:#6b7f6c;margin:0 0 4px;'
+  try {
+    await ElMessageBox({
+      title: '新建静态页',
+      message: h('div', null, [
+        h('div', { style: 'margin-bottom:14px;' }, [
+          h('p', { style: labelStyle }, '页面标题（必填）'),
+          h(ElInput, {
+            modelValue: title.value,
+            'onUpdate:modelValue': (v) => (title.value = v),
+            placeholder: '如：社区花园',
+            maxlength: 200
+          })
+        ]),
+        h('div', null, [
+          h('p', { style: labelStyle }, '访问地址（选填）'),
+          h(ElInput, {
+            modelValue: slug.value,
+            'onUpdate:modelValue': (v) => (slug.value = v),
+            placeholder: '英文/数字/连字符，如 community-garden；留空自动生成'
+          })
+        ])
+      ]),
+      confirmButtonText: '创建',
+      cancelButtonText: '取消',
+      showCancelButton: true,
+      closeOnClickModal: false
+    })
+  } catch {
+    return /* 用户取消 */
+  }
+  const t = title.value.trim()
+  const s = slug.value.trim()
+  if (!t) {
+    ElMessage.warning('标题不能为空')
+    return
+  }
+  if (s && !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(s)) {
+    ElMessage.warning('地址只能用英文、数字和连字符，且不能以连字符开头/结尾')
+    return
+  }
+  try {
+    const { data } = await createSitePage({ title: t, slug: s || undefined, status: 'draft', in_menu: false })
+    const list = await listSitePages()
+    const arr = list.data.results || list.data
+    sitepageStore.pages = arr
+    sitepages.value = arr
+    router.push({ path: '/admin/sitepages', query: { page: data.slug } })
+  } catch (e) {
+    const detail = e?.response?.data?.slug?.[0]
+    ElMessage.error(detail ? `地址无效：${detail}` : '页面创建失败，请重试')
+  }
 }
 
 // 拉取一次页面列表并缓存；无 page 参数时默认选中 home

@@ -36,6 +36,16 @@ class ArticleDetailSerializer(ArticleListSerializer):
 
 
 class SitePageSerializer(serializers.ModelSerializer):
+    """静态页（前台详情 / 导航列表共用）。"""
+
     class Meta:
         model = SitePage
-        fields = ('slug', 'title', 'content_html', 'updated_at')
+        fields = ('slug', 'title', 'menu_label', 'menu_order', 'content_html', 'updated_at')
+
+
+class SitePageMenuSerializer(serializers.ModelSerializer):
+    """导航菜单精简版：不含 content_html（列表接口避免传输整页 HTML）。"""
+
+    class Meta:
+        model = SitePage
+        fields = ('slug', 'title', 'menu_label', 'menu_order')

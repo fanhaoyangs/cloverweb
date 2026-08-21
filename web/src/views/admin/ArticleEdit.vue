@@ -40,17 +40,20 @@
       </el-form-item>
 
       <div class="form-row">
-        <el-form-item label="首页精选">
+        <el-form-item label="精选">
           <el-switch v-model="form.is_featured" />
         </el-form-item>
-        <el-form-item label="首页板块">
+        <el-form-item label="文章板块">
           <el-select
             v-model="form.website_sections"
             multiple
-            placeholder="挂载到首页哪些板块（如 home_news）"
+            filterable
+            allow-create
+            default-first-option
+            placeholder="输入板块名（如 home_news），供静态页 data-article-block 引入"
             style="width: 100%"
           >
-            <el-option label="首页·新闻回顾" value="home_news" />
+            <el-option v-for="s in SECTION_OPTIONS" :key="s.value" :label="s.label" :value="s.value" />
           </el-select>
         </el-form-item>
       </div>
@@ -110,6 +113,15 @@ const categories = ref([])
 const tagOptions = ['社区花园', '竞赛', '活动', '媒体报道']
 const editorRef = ref(null)
 const feishuDialogVisible = ref(false)
+
+// 常用板块（允许自由输入新板块，静态页 data-article-block 据此拉取文章）
+const SECTION_OPTIONS = [
+  { label: '首页·新闻回顾', value: 'home_news' },
+  { label: '四叶草堂·影像', value: 'clover_media' },
+  { label: '理念·沙龙', value: 'philosophy_salon' },
+  { label: '理念·出版物', value: 'philosophy_publications' },
+  { label: '理念·案例', value: 'philosophy_cases' }
+]
 
 function handleFeishuInsert({ html, title, mode, fillTitle }) {
   if (fillTitle && !form.title.trim() && title) {

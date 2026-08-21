@@ -16,13 +16,14 @@ from .feishu_views import (
     FeishuLogsView,
     FeishuStatusView,
 )
-from .views import ArticleDetailView, ArticleListView, SitePageDetailView
+from .views import ArticleDetailView, ArticleListView, SitePageDetailView, SitePageListView
 
 urlpatterns = [
     # 公开
     path('articles/', ArticleListView.as_view()),
     path('articles/<slug:slug>/', ArticleDetailView.as_view()),
     path('sitepage/<slug:slug>/', SitePageDetailView.as_view()),
+    path('sitepages/', SitePageListView.as_view()),
     # CMS 管理（需 is_staff）
     path('admin/articles/', AdminArticleListView.as_view()),
     path('admin/articles/<int:pk>/', AdminArticleDetailView.as_view()),

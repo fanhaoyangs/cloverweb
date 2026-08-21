@@ -72,10 +72,24 @@ class ArticleAdminSerializer(serializers.ModelSerializer):
         return data
 
 
+# 系统保留地址：这些路径已有专属前端路由，页面用了会被路由吞掉无法访问
+RESERVED_SLUGS = {'news', 'admin', 'login-callback'}
+
+
 class SitePageAdminSerializer(serializers.ModelSerializer):
-    """静态页管理（title / content_html 可写）。"""
+    """静态页管理（slug/title/content_html/status/菜单字段 可写）。"""
 
     class Meta:
         model = SitePage
-        fields = ('slug', 'title', 'content_html', 'updated_at')
-        read_only_fields = ('slug', 'updated_at')
+        fields = (
+            'slug', 'title', 'content_html', 'status',
+            'in_menu', 'menu_label', 'menu_order',
+            'created_at', 'updated_at',
+        )
+        read_only_fields = ('created_at', 'updated_at')
+        extra_kwargs = {'slug': {'required': False}}
+
+    def validate_slug(self, value):
+        if value in RESERVED_SLUGS:
+            raise serializers.ValidationError(f'「{value}」是系统保留地址，请换一个')
+        return value

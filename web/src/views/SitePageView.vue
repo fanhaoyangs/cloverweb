@@ -8,7 +8,12 @@
       ref="pageEl"
     ></div>
     <div v-else-if="!loading" class="sitepage-empty">
-      <p>页面内容尚未配置</p>
+      <template v-if="notFound">
+        <p class="nf-code">404</p>
+        <p class="nf-text">页面不存在或已下线</p>
+        <router-link to="/" class="nf-link">返回首页</router-link>
+      </template>
+      <p v-else>页面内容尚未配置</p>
     </div>
   </div>
 </template>
@@ -25,104 +30,91 @@ const props = defineProps({
 const loading = ref(true)
 const page = ref(null)
 const pageEl = ref(null)
+const notFound = ref(false)
 
 /**
- * 每个 SitePage 里的"文章块"挂载配置。
- * selector: 容器 CSS 选择器（已存在静态页 HTML 里）
- * section:  Article.website_sections 的标记值
- * cardTpl:  注入卡片的 HTML 模板（标题 + 封面 + 链接）
- * prepend:  true=插入到容器最前，false=追加到末尾，'replace'=清空容器
+ * 卡片模板库：静态页 HTML 中 <div data-article-block="板块" data-card="模板" data-limit="N">
+ * data-card 可选：review / media / publication / case / salon（缺省 review）
+ */
+const CARD_TEMPLATES = {
+  review: (a) => `
+    <a href="/news/${a.slug}" class="review-card-link">
+      <div class="review-card">
+        <div class="review-image">
+          <img src="${escapeHtml(a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png')}" alt="${escapeHtml(a.title)}" loading="lazy">
+        </div>
+        <div class="review-content-area">
+          <p>${escapeHtml(a.title)}</p>
+        </div>
+      </div>
+    </a>`,
+  media: (a) => `
+    <a href="/news/${a.slug}" class="media-card-link">
+      <div class="media-card">
+        <div class="media-image">
+          <img src="${escapeHtml(a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png')}" alt="${escapeHtml(a.title)}" loading="lazy">
+        </div>
+        <div class="media-content-area">
+          <h4>${escapeHtml(a.title)}</h4>
+          ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+        </div>
+      </div>
+    </a>`,
+  publication: (a) => `
+    <a href="/news/${a.slug}" class="publication-card-link">
+      <div class="publication-card">
+        <div class="publication-image">
+          <img src="${escapeHtml(a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png')}" alt="${escapeHtml(a.title)}" loading="lazy">
+        </div>
+        <div class="publication-content-area">
+          <h4>${escapeHtml(a.title)}</h4>
+          ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+        </div>
+      </div>
+    </a>`,
+  case: (a) => `
+    <a href="/news/${a.slug}" class="case-card-link">
+      <div class="case-card">
+        <div class="case-image">
+          <img src="${escapeHtml(a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png')}" alt="${escapeHtml(a.title)}" loading="lazy">
+        </div>
+        <div class="case-content-area">
+          <h4>${escapeHtml(a.title)}</h4>
+          ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+        </div>
+      </div>
+    </a>`,
+  salon: (a) => `
+    <a href="/news/${a.slug}" class="salon-card-link">
+      <h4>${escapeHtml(a.title)}</h4>
+      ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
+      <span class="salon-link">了解详情 →</span>
+    </a>`
+}
+
+/**
+ * 旧式兼容配置：页面 HTML 里若没有 data-article-block 占位符，
+ * 则按此处 selector 回退注入（现有静态页仍生效）。
  */
 const SECTION_INJECTIONS = {
   home: [
-    {
-      selector: '.review-grid',
-      section: 'home_news',
-      prepend: true,
-      cardTpl: (a) => `
-        <a href="/news/${a.slug}" class="review-card-link">
-          <div class="review-card">
-            <div class="review-image">
-              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
-            </div>
-            <div class="review-content-area">
-              <p>${escapeHtml(a.title)}</p>
-            </div>
-          </div>
-        </a>`
-    }
+    { selector: '.review-grid', section: 'home_news', prepend: true, card: 'review' }
   ],
   clover: [
-    {
-      selector: '.media-grid',
-      section: 'clover_media',
-      prepend: true,
-      cardTpl: (a) => `
-        <a href="/news/${a.slug}" class="media-card-link">
-          <div class="media-card">
-            <div class="media-image">
-              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
-            </div>
-            <div class="media-content-area">
-              <h4>${escapeHtml(a.title)}</h4>
-              ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
-            </div>
-          </div>
-        </a>`
-    }
+    { selector: '.media-grid', section: 'clover_media', prepend: true, card: 'media' }
   ],
   philosophy: [
-    {
-      selector: '.salon-content',
-      section: 'philosophy_salon',
-      prepend: true,
-      cardTpl: (a) => `
-        <a href="/news/${a.slug}" class="salon-card-link">
-          <h4>${escapeHtml(a.title)}</h4>
-          ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
-          <span class="salon-link">了解详情 →</span>
-        </a>`
-    },
-    {
-      selector: '.publications-grid',
-      section: 'philosophy_publications',
-      prepend: true,
-      cardTpl: (a) => `
-        <a href="/news/${a.slug}" class="publication-card-link">
-          <div class="publication-card">
-            <div class="publication-image">
-              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
-            </div>
-            <div class="publication-content-area">
-              <h4>${escapeHtml(a.title)}</h4>
-              ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
-            </div>
-          </div>
-        </a>`
-    },
-    {
-      selector: '.cases-grid',
-      section: 'philosophy_cases',
-      prepend: true,
-      cardTpl: (a) => `
-        <a href="/news/${a.slug}" class="case-card-link">
-          <div class="case-card">
-            <div class="case-image">
-              <img src="${a.coverImage || 'https://images.communitygarden.org.cn/communitygarden/四叶草堂LOGO.png'}" alt="${escapeHtml(a.title)}" loading="lazy">
-            </div>
-            <div class="case-content-area">
-              <h4>${escapeHtml(a.title)}</h4>
-              ${a.excerpt ? `<p>${escapeHtml(a.excerpt)}</p>` : ''}
-            </div>
-          </div>
-        </a>`
-    }
+    { selector: '.salon-content', section: 'philosophy_salon', prepend: true, card: 'salon' },
+    { selector: '.publications-grid', section: 'philosophy_publications', prepend: true, card: 'publication' },
+    { selector: '.cases-grid', section: 'philosophy_cases', prepend: true, card: 'case' }
   ]
 }
 
 async function load() {
   loading.value = true
   page.value = null
+  notFound.value = false
+  document.title = '四叶草堂'
   const res = await getSitePage(props.slug)
   if (res.code === 0) {
     page.value = res.data
@@ -131,54 +123,81 @@ async function load() {
     }
     await nextTick()
     await injectAllSections()
+  } else if (res.code === 404) {
+    notFound.value = true
   }
   loading.value = false
 }
 
 /**
- * 把每个 page 里配置的所有 article-block 容器注入 Article 卡片
- * 全部失败不抛错（用 try/catch 包住，缺某个 section selector 也不影响其他）
+ * 注入文章块：
+ * 1) 优先扫描页面里的 [data-article-block] 占位符（新方式，任意页面任意位置可用）
+ * 2) 无占位符时回退到 SECTION_INJECTIONS 旧选择器（兼容现有页面）
  */
 async function injectAllSections() {
-  const injections = SECTION_INJECTIONS[props.slug] || []
-  // 各板块容器互相独立（不同 selector），并行请求比串行更快；单项失败不影响其他
+  const placeholders = collectPlaceholders()
+  let jobs = []
+  if (placeholders.length) {
+    jobs = placeholders.map((p) => () => injectIntoElement(p))
+  } else {
+    const injections = SECTION_INJECTIONS[props.slug] || []
+    jobs = injections.map((cfg) => () => injectOne(cfg))
+  }
   await Promise.all(
-    injections.map(async (cfg) => {
-      try {
-        await injectOne(cfg)
-      } catch (e) {
-        console.warn(`[sitepage] inject 失败 ${cfg.section}:`, e)
-      }
-    })
+    jobs.map((fn) => fn().catch((e) => console.warn('[sitepage] inject 失败:', e)))
   )
 }
 
-async function injectOne({ selector, section, prepend, cardTpl }) {
-  const container = pageEl.value?.querySelector(selector)
-  if (!container) return
-  const res = await listArticles({ websiteSection: section, pageSize: 8 })
+// 扫描静态页 HTML 中的文章块占位符
+function collectPlaceholders() {
+  const blocks = pageEl.value?.querySelectorAll('[data-article-block]') || []
+  const list = []
+  blocks.forEach((el) => {
+    const prependAttr = el.getAttribute('data-prepend') || 'true'
+    list.push({
+      el,
+      section: (el.getAttribute('data-article-block') || '').trim(),
+      card: el.getAttribute('data-card') || 'review',
+      limit: parseInt(el.getAttribute('data-limit') || '8', 10) || 8,
+      prepend: prependAttr === 'replace' ? 'replace' : (prependAttr === 'true')
+    })
+  })
+  return list.filter((p) => p.section)
+}
+
+// 注入单个容器元素
+async function injectIntoElement({ el, section, card, limit, prepend }) {
+  if (!el || !section) return
+  const res = await listArticles({ websiteSection: section, pageSize: limit })
   if (res.code !== 0) return
   const articles = res.data.list || []
   if (articles.length === 0) return
-  const frag = document.createDocumentFragment()
-  // 用 div 包裹避免 <a> 直接放进 fragment 报错
+  const tpl = CARD_TEMPLATES[card] || CARD_TEMPLATES.review
   const wrapper = document.createElement('div')
-  wrapper.innerHTML = articles.map(cardTpl).join('')
+  wrapper.innerHTML = articles.map(tpl).join('')
+  const frag = document.createDocumentFragment()
   while (wrapper.firstChild) frag.appendChild(wrapper.firstChild)
-  if (prepend === true) {
-    container.insertBefore(frag, container.firstChild)
-  } else if (prepend === 'replace') {
-    container.innerHTML = ''
-    container.appendChild(frag)
+  if (prepend === 'replace') {
+    el.innerHTML = ''
+    el.appendChild(frag)
+  } else if (prepend === true) {
+    el.insertBefore(frag, el.firstChild)
   } else {
-    container.appendChild(frag)
+    el.appendChild(frag)
   }
 }
 
+// 旧式注入：按 selector 找容器，复用 injectIntoElement
+async function injectOne({ selector, section, prepend, card = 'review' }) {
+  const container = pageEl.value?.querySelector(selector)
+  if (!container) return
+  await injectIntoElement({ el: container, section, card, limit: 8, prepend })
+}
+
 function escapeHtml(s) {
-  const div = document.createElement('div')
-  div.textContent = s || ''
-  return div.innerHTML
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]))
 }
 
 onMounted(load)
@@ -196,6 +215,35 @@ watch(() => props.slug, load)
   color: #8a9a8a;
   font-size: 15px;
   letter-spacing: 2px;
+}
+
+/* 404：页面不存在或已下线 */
+.nf-code {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 72px;
+  font-weight: 700;
+  color: #5a7d5a;
+  margin: 0 0 8px;
+  letter-spacing: 6px;
+}
+
+.nf-text {
+  margin: 0 0 28px;
+}
+
+.nf-link {
+  display: inline-block;
+  padding: 10px 32px;
+  background: #5a7d5a;
+  color: #fff;
+  border-radius: 24px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.3s ease;
+}
+
+.nf-link:hover {
+  background: #476347;
 }
 </style>
 

@@ -21,18 +21,23 @@ class TeamMember(models.Model):
 
 
 class SitePage(models.Model):
-    """静态内容页（迁移 main/ 的 index、clover、philosophy 三页），Vue 端 v-html 渲染。"""
+    """静态内容页，Vue 端 v-html 渲染。支持草稿/发布/撤下与导航菜单配置。"""
 
-    PAGE_CHOICES = [
-        ('home', '首页'),
-        ('about', '关于我们'),
-        ('philosophy', '理念'),
-        ('clover', '四叶草堂'),
+    STATUS_CHOICES = [
+        ('draft', '草稿'),
+        ('published', '已发布'),
+        ('archived', '已撤下'),
     ]
 
-    slug = models.SlugField('页面标识', max_length=32, unique=True, choices=PAGE_CHOICES)
+    slug = models.SlugField('页面标识', max_length=64, unique=True)
     title = models.CharField('标题', max_length=200)
+    status = models.CharField('状态', max_length=16, choices=STATUS_CHOICES, default='draft')
     content_html = models.TextField('内容 HTML', blank=True)
+    in_menu = models.BooleanField('显示在导航', default=False)
+    menu_label = models.CharField('菜单名称', max_length=64, blank=True)
+    menu_order = models.IntegerField('菜单排序', default=0)
+    # null=True 与 0003 迁移对齐（存量行加列时的兼容写法），新记录由 auto_now_add 填值
+    created_at = models.DateTimeField('创建时间', auto_now_add=True, null=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -42,6 +47,7 @@ class SitePage(models.Model):
     class Meta:
         verbose_name = '静态页'
         verbose_name_plural = '静态页'
+        ordering = ['menu_order', 'created_at', 'id']
 
     def __str__(self):
-        return f'{self.get_slug_display()}（{self.slug}）'
+        return f'{self.menu_label or self.title or self.slug}（{self.slug}）'

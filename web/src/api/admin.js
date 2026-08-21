@@ -55,16 +55,24 @@ export function createCategory(name) {
 }
 
 // ---- 静态页 ----
-export function listSitePages() {
-  return request.get('/admin/sitepages/')
+export function listSitePages(params) {
+  return request.get('/admin/sitepages/', { params })
 }
 
 export function getSitePageAdmin(slug) {
   return request.get(`/admin/sitepages/${slug}/`)
 }
 
+export function createSitePage(payload) {
+  return request.post('/admin/sitepages/', payload)
+}
+
 export function updateSitePage(slug, payload) {
   return request.put(`/admin/sitepages/${slug}/`, payload)
+}
+
+export function deleteSitePage(slug) {
+  return request.delete(`/admin/sitepages/${slug}/`)
 }
 
 // ---- 飞书文档导入 ----

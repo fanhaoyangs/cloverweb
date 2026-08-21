@@ -138,6 +138,7 @@ async function replaceRemoteImages() {
       const escaped = oldUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       newContent = newContent.replace(new RegExp(escaped, 'g'), newUrl)
     }
+    newContent = fixXiumiSlide(newContent)
     editor.setContent(newContent)
     emit('update:modelValue', newContent)
   }
@@ -155,6 +156,32 @@ function triggerCatchRemoteImage() {
       replaceRemoteImages()
     }, 1500)
   }
+}
+
+// 秀米多图 Slide 统一高度（px），配合外层 overflow:hidden 裁齐
+const SLIDE_IMG_HEIGHT = 360
+
+// 秀米 Slide 横向轨道：style 含 overflow:hidden 且 width>100%（如 900%），统一其内图片高度并裁剪
+function fixXiumiSlide(content) {
+  if (!content || !content.includes('xiumi.us')) return content
+  const doc = new DOMParser().parseFromString(content, 'text/html')
+  let fixed = false
+  doc.querySelectorAll('section').forEach((sec) => {
+    const style = sec.getAttribute('style') || ''
+    const wm = style.match(/width\s*:\s*(\d+(?:\.\d+)?)%/i)
+    const isTrack = /overflow\s*:\s*hidden/i.test(style) && wm && parseFloat(wm[1]) > 100
+    if (!isTrack) return
+    const imgs = sec.querySelectorAll('img')
+    if (imgs.length < 2) return
+    imgs.forEach((img) => {
+      img.style.height = SLIDE_IMG_HEIGHT + 'px'
+      const curW = img.style.width
+      if (!curW || curW === 'auto') img.style.width = '100%'
+      img.style.objectFit = 'cover'
+    })
+    fixed = true
+  })
+  return fixed ? doc.body.innerHTML : content
 }
 
 const RESIZE_KEY = 'clover_ueditor_height'

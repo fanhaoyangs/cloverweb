@@ -4,7 +4,7 @@ from rest_framework import generics
 from apps.team.models import SitePage
 
 from .models import Article
-from .serializers import ArticleDetailSerializer, ArticleListSerializer, SitePageSerializer
+from .serializers import ArticleDetailSerializer, ArticleListSerializer, SitePageMenuSerializer, SitePageSerializer
 
 
 class ArticleListView(generics.ListAPIView):
@@ -38,8 +38,17 @@ class ArticleDetailView(generics.RetrieveAPIView):
 
 
 class SitePageDetailView(generics.RetrieveAPIView):
-    """静态页内容（home / about / philosophy）。"""
+    """静态页内容（仅已发布页面可访问）。"""
 
     lookup_field = 'slug'
     serializer_class = SitePageSerializer
-    queryset = SitePage.objects.all()
+    queryset = SitePage.objects.filter(status='published')
+
+
+class SitePageListView(generics.ListAPIView):
+    """公开静态页列表（导航菜单用）：仅已发布且 in_menu 的页面，不含正文 HTML。"""
+
+    serializer_class = SitePageMenuSerializer
+
+    def get_queryset(self):
+        return SitePage.objects.filter(status='published', in_menu=True).order_by('menu_order', 'created_at')

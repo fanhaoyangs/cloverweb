@@ -10,24 +10,6 @@ const publicRoutes = [
     props: { slug: 'home' }
   },
   {
-    path: '/about',
-    name: 'About',
-    component: SitePageView,
-    props: { slug: 'about' }
-  },
-  {
-    path: '/philosophy',
-    name: 'Philosophy',
-    component: SitePageView,
-    props: { slug: 'philosophy' }
-  },
-  {
-    path: '/clover',
-    name: 'Clover',
-    component: SitePageView,
-    props: { slug: 'clover' }
-  },
-  {
     path: '/news',
     name: 'NewsList',
     component: () => import('@/views/NewsList.vue')
@@ -36,6 +18,14 @@ const publicRoutes = [
     path: '/news/:slug',
     name: 'ArticleDetail',
     component: () => import('@/views/ArticleDetail.vue')
+  },
+  // 动态静态页（覆盖 /about /philosophy /clover 及后台新建的页面）；
+  // 放在具体路由之后，避免吞掉 /news 等保留路径
+  {
+    path: '/:slug',
+    name: 'SitePageDynamic',
+    component: SitePageView,
+    props: (route) => ({ slug: route.params.slug })
   }
 ]
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="news-page">
+  <div class="news-page" v-loading="loading">
     <section class="hero">
       <div class="hero-bg"></div>
       <div class="hero-overlay"></div>
@@ -87,7 +87,10 @@ const articlePage = ref(1)
 const hasMore = ref(false)
 
 const tabs = computed(() => {
-  const base = [{ value: 'all', label: '全部' }]
+  const base = [
+    { value: 'all', label: '全部' },
+    { value: 'featured', label: '精选' }
+  ]
   const cats = CATEGORIES.map(c => ({ value: c.value, label: c.label }))
   return [...base, ...cats]
 })
@@ -95,10 +98,7 @@ const tabs = computed(() => {
 const filteredList = computed(() => {
   let list = [...articles.value]
 
-  if (activeTab.value !== 'all') {
-    list = list.filter(i => i.category === activeTab.value)
-  }
-
+  // 分类/精选已由服务端过滤，这里只做本地搜索
   if (searchKeyword.value.trim()) {
     const kw = searchKeyword.value.trim().toLowerCase()
     list = list.filter(i =>
@@ -111,8 +111,12 @@ const filteredList = computed(() => {
   return list
 })
 
+// 切 Tab 按服务端参数重新拉取（featured/category），并重置分页
 function switchTab(tab) {
+  if (activeTab.value === tab) return
   activeTab.value = tab
+  articlePage.value = 1
+  loadArticles()
 }
 
 function handleSearch() {
@@ -125,8 +129,13 @@ function handleClick(item) {
 async function loadArticles() {
   loading.value = true
   try {
-    const res = await listArticles({ page: articlePage.value, pageSize: 20 })
-    console.log('listArticles response:', res)
+    const params = { page: articlePage.value, pageSize: 20 }
+    if (activeTab.value === 'featured') {
+      params.featured = true
+    } else if (activeTab.value !== 'all') {
+      params.category = activeTab.value
+    }
+    const res = await listArticles(params)
     if (res.code === 0) {
       if (articlePage.value === 1) {
         articles.value = res.data.list
@@ -134,7 +143,6 @@ async function loadArticles() {
         articles.value.push(...res.data.list)
       }
       hasMore.value = articles.value.length < res.data.total
-      console.log('articles loaded:', articles.value.length, 'total:', res.data.total)
     } else {
       console.error('listArticles error:', res.message)
     }
