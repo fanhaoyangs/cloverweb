@@ -89,6 +89,7 @@ jobs:
           mkdir -p "$STAGE/deploy"
           cp deploy/deploy.sh "$STAGE/deploy/"
           cp deploy/parse_env.py "$STAGE/deploy/"
+          cp deploy/post_deploy.py "$STAGE/deploy/"
           cp deploy/nginx/cloverweb.conf "$STAGE/deploy/" 2>/dev/null || true
           cp deploy/systemd/cloverweb.service "$STAGE/deploy/" 2>/dev/null || true
 

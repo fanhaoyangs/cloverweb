@@ -54,13 +54,14 @@ export DJANGO_SETTINGS_MODULE=cloverweb.settings.prod
 eval "$ENV_EXPORTS_QUOTED"
 # 透传给 sudo 子 shell
 # 已 set +H 关历史扩展，所以 DB_PASSWORD 里的 ! 不会触发 bash 扩展
+# 数据初始化（loaddata 仅表空时执行 + 分类种子）收敛在 post_deploy.py：
+# 无条件 loaddata 会用老 fixture 覆盖线上页面（status 重置为 draft → 主页 404）
 sudo -u $APP_USER env $(echo "$ENV_EXPORTS_UNQUOTED" | sed 's/^export //') \
   DJANGO_SETTINGS_MODULE=cloverweb.settings.prod \
   bash -c "cd $APP_DIR/backend && \
     venv/bin/python manage.py migrate --noinput && \
     venv/bin/python manage.py collectstatic --noinput --clear && \
-    venv/bin/python manage.py loaddata apps/team/fixtures/initial_sitepages.json && \
-    venv/bin/python manage.py seed_categories"
+    venv/bin/python $APP_DIR/deploy/post_deploy.py"
 
 echo "==> [6/6] 启动服务"
 systemctl start cloverweb
