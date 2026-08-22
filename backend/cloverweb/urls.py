@@ -13,6 +13,7 @@ urlpatterns = [
     # API
     path('api/auth/', include('apps.auth_custom.urls')),
     path('api/ueditor/', include('apps.common.urls')),
+    path('api/bbs/', include('apps.bbs.urls')),
     path('api/', include('apps.content.urls')),
 ]
 

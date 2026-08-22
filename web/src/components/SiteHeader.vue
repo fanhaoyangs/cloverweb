@@ -17,8 +17,11 @@
           {{ p.menu_label || p.title || p.slug }}
         </router-link>
       </li>
-      <!-- 资讯分享为文章列表页，固定展示 -->
+      <!-- 资讯分享为文章列表页，论坛交流为 BBS，固定展示 -->
       <li><router-link to="/news" :class="{ active: $route.path === '/news' }">资讯分享</router-link></li>
+      <li>
+        <router-link to="/bbs" :class="{ active: $route.path.startsWith('/bbs') }">论坛交流</router-link>
+      </li>
     </ul>
     <div class="mobile-menu-btn" :class="{ active: mobileMenuOpen }" @click="toggleMobileMenu" ref="mobileMenuBtnRef">
       <span></span>

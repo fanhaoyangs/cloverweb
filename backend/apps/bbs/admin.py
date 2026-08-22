@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Like, Post, Topic
+from .models import Like, Node, Post, Topic
+
+
+@admin.register(Node)
+class NodeAdmin(admin.ModelAdmin):
+    list_display = ('slug', 'name', 'order', 'is_active', 'staff_only', 'created_at')
+    list_editable = ('order', 'is_active', 'staff_only')
 
 
 @admin.register(Topic)

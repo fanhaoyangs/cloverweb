@@ -29,3 +29,4 @@ else:
     print('  静态页为空，已加载初始 fixture')
 
 call_command('seed_categories')
+call_command('seed_bbs_nodes')

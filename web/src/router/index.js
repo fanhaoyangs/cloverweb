@@ -19,6 +19,28 @@ const publicRoutes = [
     name: 'ArticleDetail',
     component: () => import('@/views/ArticleDetail.vue')
   },
+  // BBS 论坛（P1：首页/板块/详情/发帖）
+  {
+    path: '/bbs',
+    name: 'BbsHome',
+    component: () => import('@/views/bbs/BbsHome.vue')
+  },
+  {
+    path: '/bbs/b/:node',
+    name: 'BbsNode',
+    component: () => import('@/views/bbs/BbsHome.vue')
+  },
+  {
+    path: '/bbs/t/:id',
+    name: 'BbsTopic',
+    component: () => import('@/views/bbs/BbsTopic.vue'),
+    props: true
+  },
+  {
+    path: '/bbs/new',
+    name: 'BbsNew',
+    component: () => import('@/views/bbs/BbsNew.vue')
+  },
   // 动态静态页（覆盖 /about /philosophy /clover 及后台新建的页面）；
   // 放在具体路由之后，避免吞掉 /news 等保留路径
   {

@@ -1,0 +1,381 @@
+/* ============================================================
+   BBS 论坛公共样式（Flarum 式极简 + 全站绿色系令牌）
+   ============================================================ */
+
+.bbs-wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 90px 20px 60px; /* 顶部让出固定导航 */
+}
+
+/* 顶部工具条 */
+.bbs-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.bbs-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-green-dark);
+  letter-spacing: 1px;
+}
+
+.bbs-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 按钮（延续全站圆角/绿主色，Flarum 的克制感） */
+.bbs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: none;
+  line-height: 1.4;
+}
+
+.bbs-btn-primary {
+  background: var(--primary-green);
+  color: #fff;
+}
+.bbs-btn-primary:hover {
+  background: var(--primary-green-dark);
+}
+
+.bbs-btn-ghost {
+  border-color: #d8e2d8;
+  color: var(--text-gray);
+  background: #fff;
+}
+.bbs-btn-ghost:hover {
+  border-color: var(--primary-green);
+  color: var(--primary-green);
+}
+
+/* 板块 pills */
+.bbs-node-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #e9ede9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.bbs-node-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text-gray);
+  background: #f4f6f4;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+.bbs-node-pill:hover {
+  color: var(--primary-green);
+}
+.bbs-node-pill.active {
+  background: var(--primary-green);
+  color: #fff;
+}
+.bbs-node-pill .pill-count {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* 话题列表卡片 */
+.bbs-list {
+  background: #fff;
+  border: 1px solid #e9ede9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bbs-topic-row {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0f3f0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.bbs-topic-row:last-child {
+  border-bottom: none;
+}
+.bbs-topic-row:hover {
+  background: #fafbfa;
+}
+
+/* 头像 */
+.bbs-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: #eef4ee;
+  color: var(--primary-green-dark);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 500;
+  user-select: none;
+}
+
+.bbs-topic-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.bbs-topic-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bbs-topic-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.bbs-topic-row:hover .bbs-topic-title {
+  color: var(--primary-green);
+}
+
+.bbs-badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f0f3f0;
+  color: var(--text-light);
+  flex-shrink: 0;
+}
+.bbs-badge.pin {
+  background: #eef4ee;
+  color: var(--primary-green);
+}
+.bbs-badge.lock {
+  background: #fdf3e7;
+  color: #b07d2b;
+}
+
+.bbs-node-tag {
+  font-size: 12px;
+  color: var(--primary-green);
+  background: #eef4ee;
+  padding: 1px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.bbs-topic-excerpt {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bbs-topic-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 5px;
+}
+
+.bbs-topic-meta .meta-dot {
+  opacity: 0.5;
+}
+
+.bbs-topic-side {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-light);
+}
+.bbs-topic-side .side-num {
+  text-align: center;
+  min-width: 32px;
+}
+.bbs-topic-side .side-num b {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-gray);
+}
+
+/* 详情页楼层卡片 */
+.bbs-post-card {
+  background: #fff;
+  border: 1px solid #e9ede9;
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+}
+
+.bbs-post-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bbs-post-head .author-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.bbs-post-head .post-time {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.bbs-post-floor {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.bbs-post-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f3f0;
+}
+
+.bbs-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--text-light);
+  background: none;
+  border: 1px solid #e9ede9;
+  border-radius: 999px;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.bbs-like-btn:hover {
+  border-color: var(--primary-green);
+  color: var(--primary-green);
+}
+.bbs-like-btn.liked {
+  background: #eef4ee;
+  border-color: var(--primary-green);
+  color: var(--primary-green);
+}
+
+/* 正文渲染区（服务端已消毒的 HTML） */
+.bbs-content {
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--text-dark);
+  word-break: break-word;
+}
+.bbs-content img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+.bbs-content pre {
+  background: #f6f8f6;
+  border: 1px solid #e9ede9;
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.bbs-content code {
+  background: #f0f3f0;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 13px;
+}
+.bbs-content pre code {
+  background: none;
+  padding: 0;
+}
+.bbs-content blockquote {
+  border-left: 3px solid var(--primary-green-light);
+  background: #f7faf7;
+  margin: 8px 0;
+  padding: 6px 14px;
+  color: var(--text-gray);
+}
+.bbs-content a {
+  color: var(--primary-green);
+}
+.bbs-content table {
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+.bbs-content th,
+.bbs-content td {
+  border: 1px solid #e0e6e0;
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+/* 空态 / 加载 */
+.bbs-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-light);
+  background: #fff;
+  border: 1px solid #e9ede9;
+  border-radius: 8px;
+}
+
+.bbs-loadmore {
+  text-align: center;
+  margin-top: 16px;
+}
+
+/* 移动端 */
+@media (max-width: 640px) {
+  .bbs-wrap {
+    padding: 84px 12px 40px;
+  }
+  .bbs-topic-side {
+    display: none;
+  }
+  .bbs-post-card {
+    padding: 14px;
+  }
+}

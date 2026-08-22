@@ -73,7 +73,7 @@ class ArticleAdminSerializer(serializers.ModelSerializer):
 
 
 # 系统保留地址：这些路径已有专属前端路由，页面用了会被路由吞掉无法访问
-RESERVED_SLUGS = {'news', 'admin', 'login-callback'}
+RESERVED_SLUGS = {'news', 'admin', 'login-callback', 'bbs'}
 
 
 class ArticleAdminListSerializer(ArticleAdminSerializer):

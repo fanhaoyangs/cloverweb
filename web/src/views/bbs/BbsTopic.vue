@@ -1,0 +1,272 @@
+<template>
+  <div class="bbs-wrap topic-page">
+    <template v-if="topic">
+      <!-- 面包屑 -->
+      <div class="crumb">
+        <router-link to="/bbs">论坛交流</router-link>
+        <template v-if="topic.node">
+          <span class="crumb-sep">/</span>
+          <router-link :to="`/bbs/b/${topic.node.slug}`">{{ topic.node.name }}</router-link>
+        </template>
+      </div>
+
+      <!-- 楼主帖 -->
+      <div class="bbs-post-card">
+        <div class="bbs-post-head">
+          <img v-if="topic.author?.avatar" class="bbs-avatar" :src="topic.author.avatar" :alt="topic.author.name" />
+          <span v-else class="bbs-avatar">{{ (topic.author?.name || '?').slice(0, 1) }}</span>
+          <span class="author-name">{{ topic.author?.name }}</span>
+          <span class="post-time">{{ formatForumTime(topic.createdAt) }}</span>
+          <span class="bbs-post-floor">1 楼</span>
+        </div>
+
+        <h1 class="topic-title">
+          <span v-if="topic.isPinned" class="bbs-badge pin">置顶</span>
+          <span v-if="topic.isClosed" class="bbs-badge lock">锁定</span>
+          {{ topic.title }}
+        </h1>
+
+        <div class="bbs-content" v-html="topic.contentHtml"></div>
+
+        <div class="bbs-post-actions">
+          <button
+            class="bbs-like-btn"
+            :class="{ liked: topic.liked }"
+            @click="likeTopic"
+          >👍 {{ topic.likeCount }}</button>
+          <span class="stat-view">{{ topic.viewCount }} 浏览</span>
+        </div>
+      </div>
+
+      <!-- 楼层回复 -->
+      <div v-if="posts.length === 0 && !loadingPosts" class="bbs-empty replies-empty">
+        还没有回复，快来抢占 2 楼
+      </div>
+      <div v-for="p in posts" :key="p.id" class="bbs-post-card">
+        <div class="bbs-post-head">
+          <img v-if="p.author?.avatar" class="bbs-avatar" :src="p.author.avatar" :alt="p.author.name" />
+          <span v-else class="bbs-avatar">{{ (p.author?.name || '?').slice(0, 1) }}</span>
+          <span class="author-name">{{ p.author?.name }}</span>
+          <span class="post-time">{{ formatForumTime(p.createdAt) }}</span>
+          <span class="bbs-post-floor">{{ p.floor }} 楼</span>
+        </div>
+        <div class="bbs-content" v-html="p.contentHtml"></div>
+        <div class="bbs-post-actions">
+          <button
+            class="bbs-like-btn"
+            :class="{ liked: p.liked }"
+            @click="likePost(p)"
+          >👍 {{ p.likeCount }}</button>
+        </div>
+      </div>
+
+      <div class="bbs-loadmore" v-if="hasMorePosts">
+        <button class="bbs-btn bbs-btn-ghost" :disabled="loadingPosts" @click="loadPosts">
+          {{ loadingPosts ? '加载中…' : '加载更多回复' }}
+        </button>
+      </div>
+
+      <!-- 回复框 -->
+      <div class="reply-box">
+        <template v-if="!topic.isClosed">
+          <div class="reply-head">回复话题</div>
+          <MdEditor
+            v-model="replyMd"
+            :rows="5"
+            placeholder="友善交流，共同营造…（支持 Markdown）"
+            @submit="submitReply"
+          />
+          <div class="reply-actions">
+            <button
+              class="bbs-btn bbs-btn-primary"
+              :disabled="replying || !replyMd.trim()"
+              @click="submitReply"
+            >
+              {{ replying ? '回复中…' : '回复' }}
+            </button>
+          </div>
+        </template>
+        <div v-else class="bbs-empty">话题已锁定，无法回复</div>
+      </div>
+    </template>
+
+    <div v-else-if="loadingTopic" class="bbs-empty">加载中…</div>
+    <div v-else class="bbs-empty">
+      话题不存在
+      <div style="margin-top: 14px">
+        <router-link to="/bbs"><button class="bbs-btn bbs-btn-ghost">返回论坛</button></router-link>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import MdEditor from '@/components/bbs/MdEditor.vue'
+import {
+  getTopic,
+  listPosts,
+  createPost,
+  toggleTopicLike,
+  togglePostLike,
+  formatForumTime,
+  requireLogin
+} from '@/api/bbs'
+
+const props = defineProps({
+  id: { type: String, required: true }
+})
+const route = useRoute()
+
+const topic = ref(null)
+const posts = ref([])
+const loadingTopic = ref(true)
+const loadingPosts = ref(false)
+const postPage = ref(1)
+const hasMorePosts = ref(false)
+const replyMd = ref('')
+const replying = ref(false)
+
+async function loadTopic() {
+  loadingTopic.value = true
+  topic.value = null
+  try {
+    topic.value = await getTopic(props.id)
+    document.title = `${topic.value.title} · 论坛交流`
+  } catch {
+    topic.value = null
+  } finally {
+    loadingTopic.value = false
+  }
+}
+
+async function loadPosts(reset = false) {
+  if (reset) {
+    postPage.value = 1
+    posts.value = []
+  }
+  loadingPosts.value = true
+  try {
+    const { list, total } = await listPosts(props.id, { page: postPage.value })
+    posts.value = reset ? list : [...posts.value, ...list]
+    hasMorePosts.value = posts.value.length < total
+  } finally {
+    loadingPosts.value = false
+  }
+}
+
+async function submitReply() {
+  if (replying.value || !replyMd.value.trim()) return
+  if (!requireLogin(route.fullPath)) return
+  replying.value = true
+  try {
+    const p = await createPost(props.id, replyMd.value.trim())
+    posts.value.push(p)
+    hasMorePosts.value = false // 尾部追加后无需再分页
+    if (topic.value) {
+      topic.value.replyCount += 1
+      topic.value.lastReplyAt = new Date().toISOString()
+    }
+    replyMd.value = ''
+    ElMessage.success('回复成功')
+  } catch (e) {
+    const detail = e?.response?.data
+    ElMessage.error(detail?.content_md?.[0] || detail?.detail || (Array.isArray(detail) ? detail[0] : '回复失败，请重试'))
+  } finally {
+    replying.value = false
+  }
+}
+
+async function likeTopic() {
+  if (!requireLogin(route.fullPath)) return
+  try {
+    const r = await toggleTopicLike(topic.value.id)
+    topic.value.liked = r.liked
+    topic.value.likeCount = r.like_count
+  } catch {
+    ElMessage.error('操作失败，请重试')
+  }
+}
+
+async function likePost(p) {
+  if (!requireLogin(route.fullPath)) return
+  try {
+    const r = await togglePostLike(props.id, p.id)
+    p.liked = r.liked
+    p.likeCount = r.like_count
+  } catch {
+    ElMessage.error('操作失败，请重试')
+  }
+}
+
+onMounted(() => {
+  loadTopic()
+  loadPosts(true)
+})
+
+watch(
+  () => props.id,
+  () => {
+    if (route.path.startsWith('/bbs/t/')) {
+      loadTopic()
+      loadPosts(true)
+    }
+  }
+)
+</script>
+
+<style scoped>
+.topic-page {
+  max-width: 820px;
+}
+.crumb {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 12px;
+}
+.crumb a {
+  color: var(--text-gray);
+  text-decoration: none;
+}
+.crumb a:hover {
+  color: var(--primary-green);
+}
+.crumb-sep {
+  margin: 0 6px;
+}
+.topic-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 14px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stat-view {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-left: auto;
+}
+.replies-empty {
+  margin-bottom: 12px;
+}
+.reply-box {
+  margin-top: 20px;
+}
+.reply-head {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+}
+.reply-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>
