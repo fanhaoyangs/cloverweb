@@ -24,7 +24,7 @@ MemoryMax=768M
 # 安全加固
 NoNewPrivileges=true
 ProtectSystem=full
-ReadWritePaths=/opt/cloverweb/backend/staticfiles /opt/cloverweb/backend/media
+ReadWritePaths=/opt/cloverweb/backend/staticfiles /opt/cloverweb/backend/media /opt/cloverweb/backend/var
 
 [Install]
 WantedBy=multi-user.target

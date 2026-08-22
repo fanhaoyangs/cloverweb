@@ -117,6 +117,18 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.communitygarden.org.cn',
 ]
 
+# ---- 缓存 ----
+# 飞书 OAuth state / 一次性 exchange code 必须跨进程共享：
+# 默认 LocMemCache 是进程内存，生产 gunicorn 多 worker 下 callback 会随机
+# 落到别的 worker（state 不存在 → "state 无效" 400）。FileBasedCache 跨进程、
+# 零依赖（注意 prod systemd ReadWritePaths 需包含该目录）
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': BASE_DIR / 'var' / 'cache',
+    }
+}
+
 # ---- 国际化 / 时区 ----
 LANGUAGE_CODE = 'zh-hans'
 TIME_ZONE = 'Asia/Shanghai'

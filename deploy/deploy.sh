@@ -32,8 +32,9 @@ rsync -a --delete \
 mkdir -p "$APP_DIR/deploy"
 rsync -a "$STAGE/deploy/" "$APP_DIR/deploy/"
 chmod +x "$APP_DIR/deploy/deploy.sh" "$APP_DIR/deploy/parse_env.py"
-mkdir -p "$APP_DIR"/backend/{staticfiles,media}
-chown -R $APP_USER:$APP_USER "$APP_DIR"/backend/{staticfiles,media}
+# var/：FileBasedCache 目录（飞书 OAuth state 跨 worker 共享）
+mkdir -p "$APP_DIR"/backend/{staticfiles,media,var}
+chown -R $APP_USER:$APP_USER "$APP_DIR"/backend/{staticfiles,media,var}
 # nginx 以 www 用户跑，需要可读 web/ 和 backend/staticfiles/
 chmod 755 "$APP_DIR" "$APP_DIR/backend" "$APP_DIR/web"
 chmod -R o+rX "$APP_DIR/web" "$APP_DIR/backend/staticfiles"
@@ -64,6 +65,14 @@ sudo -u $APP_USER env $(echo "$ENV_EXPORTS_UNQUOTED" | sed 's/^export //') \
     venv/bin/python $APP_DIR/deploy/post_deploy.py"
 
 echo "==> [6/6] 启动服务"
+# systemd unit 有变化时才安装 + reload（避免每次部署无谓 reload）
+if [ -f "$APP_DIR/deploy/systemd/cloverweb.service" ]; then
+  if ! diff -q "$APP_DIR/deploy/systemd/cloverweb.service" /etc/systemd/system/cloverweb.service >/dev/null 2>&1; then
+    install -m 644 "$APP_DIR/deploy/systemd/cloverweb.service" /etc/systemd/system/cloverweb.service
+    systemctl daemon-reload
+    echo "  systemd unit 已更新并 daemon-reload"
+  fi
+fi
 systemctl start cloverweb
 sleep 2
 systemctl is-active cloverweb && echo "==> 部署完成"
