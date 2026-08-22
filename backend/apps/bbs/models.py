@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Node(models.Model):
@@ -27,7 +30,21 @@ class Node(models.Model):
         return self.name
 
 
-class Topic(models.Model):
+class EditWindowMixin:
+    """作者自编辑/自删除的时间窗（自发表起算，一次性）。
+    防止"发帖引战→被引用反驳→偷偷改原帖"破坏对话语境。
+    """
+
+    @property
+    def edit_deadline(self):
+        window = getattr(settings, 'BBS_EDIT_WINDOW_MINUTES', 60)
+        return self.created_at + timedelta(minutes=window)
+
+    def within_edit_window(self, at=None):
+        return (at or timezone.now()) <= self.edit_deadline
+
+
+class Topic(EditWindowMixin, models.Model):
     title = models.CharField('标题', max_length=200)
     # 双份存储：md 供再编辑/纯文本场景，html 为服务端渲染+消毒后的展示版本
     content_md = models.TextField('正文 Markdown', blank=True)
@@ -53,6 +70,8 @@ class Topic(models.Model):
     )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
+    # 最后编辑时间（非 auto：仅作者真实编辑正文/标题时更新，用于"已编辑"标记）
+    edited_at = models.DateTimeField('最后编辑时间', null=True, blank=True)
 
     class Meta:
         verbose_name = '主题'
@@ -63,7 +82,7 @@ class Topic(models.Model):
         return self.title
 
 
-class Post(models.Model):
+class Post(EditWindowMixin, models.Model):
     topic = models.ForeignKey(
         Topic, on_delete=models.CASCADE, related_name='replies', verbose_name='所属主题',
     )
@@ -76,8 +95,11 @@ class Post(models.Model):
     # 楼层号：2 起（楼主帖为 1 楼），创建时按 topic.reply_count 递增
     floor = models.PositiveIntegerField('楼层', default=0)
     like_count = models.PositiveIntegerField('点赞数', default=0)
+    # 软删除：保留楼层号连续与引用上下文，正文在删除时清空
+    deleted = models.BooleanField('已删除', default=False)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
+    edited_at = models.DateTimeField('最后编辑时间', null=True, blank=True)
 
     class Meta:
         verbose_name = '回复'

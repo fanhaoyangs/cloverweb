@@ -146,6 +146,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ---- 站点 ----
 SITE_URL = os.getenv('SITE_URL', 'https://communitygarden.org.cn')
 
+# BBS 作者自编辑/自删除时间窗（分钟，自发表起算；0 表示不允许自编辑）
+BBS_EDIT_WINDOW_MINUTES = int(os.getenv('BBS_EDIT_WINDOW_MINUTES', '60'))
+
 # ---- 飞书 OAuth（CMS 登录 + 文档导入，v3.2 决策 / v1.1 改 user token）----
 FEISHU_APP_ID = os.getenv('FEISHU_APP_ID', '')
 FEISHU_APP_SECRET = os.getenv('FEISHU_APP_SECRET', '')
