@@ -14,6 +14,17 @@ echo "==> [1/6] 解包 $TARBALL"
 tar -xzf "$TARBALL" -C "$STAGE"
 test -d "$STAGE/backend" && test -d "$STAGE/web"
 
+# 自更新保护：bash 逐行读脚本，若 [3/6] 的 rsync 中途替换本文件，
+# 已打开的 fd 仍指向旧 inode —— 本次运行会"丢失"新逻辑（曾导致 var/
+# 未创建、migrate PermissionError、服务停机）。检测到新版本时装好并 exec 重跑。
+if ! diff -q "$STAGE/deploy/deploy.sh" "$APP_DIR/deploy/deploy.sh" >/dev/null 2>&1; then
+  mkdir -p "$APP_DIR/deploy"
+  install -m 755 "$STAGE/deploy/deploy.sh" "$APP_DIR/deploy/deploy.sh"
+  echo "  deploy.sh 有新版本，已安装，用新版重新执行"
+  rm -rf "$STAGE"  # TARBALL 保留给新版用
+  exec /bin/bash "$APP_DIR/deploy/deploy.sh" "$TARBALL"
+fi
+
 echo "==> [2/6] 停止服务"
 systemctl stop cloverweb || true
 

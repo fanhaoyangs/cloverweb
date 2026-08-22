@@ -86,12 +86,14 @@ jobs:
             backend/ "$STAGE/backend/"
 
           # 3) 部署脚本（部署时也要带过去，覆盖 CVM 旧版）
-          mkdir -p "$STAGE/deploy"
+          #    systemd/nginx 保持子目录结构：deploy.sh 读取 deploy/systemd/，
+          #    平铺复制会导致两者路径对不上、unit 永不更新（历史 bug）
+          mkdir -p "$STAGE/deploy/systemd" "$STAGE/deploy/nginx"
           cp deploy/deploy.sh "$STAGE/deploy/"
           cp deploy/parse_env.py "$STAGE/deploy/"
           cp deploy/post_deploy.py "$STAGE/deploy/"
-          cp deploy/nginx/cloverweb.conf "$STAGE/deploy/" 2>/dev/null || true
-          cp deploy/systemd/cloverweb.service "$STAGE/deploy/" 2>/dev/null || true
+          cp deploy/nginx/cloverweb.conf "$STAGE/deploy/nginx/" 2>/dev/null || true
+          cp deploy/systemd/cloverweb.service "$STAGE/deploy/systemd/" 2>/dev/null || true
 
           # 4) 打 tarball
           tar -czf cloverweb-deploy.tar.gz -C "$STAGE" .
