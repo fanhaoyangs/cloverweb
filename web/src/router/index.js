@@ -82,6 +82,16 @@ const cmsRoutes = [
         path: 'sitepages',
         name: 'AdminSitePageEdit',
         component: () => import('@/views/admin/SitePageEdit.vue')
+      },
+      {
+        path: 'bbs/topics',
+        name: 'AdminBbsTopics',
+        component: () => import('@/views/admin/BbsTopicList.vue')
+      },
+      {
+        path: 'bbs/nodes',
+        name: 'AdminBbsNodes',
+        component: () => import('@/views/admin/BbsNodeAdmin.vue')
       }
     ]
   }

@@ -3,6 +3,16 @@
     <div class="bbs-toolbar">
       <h1 class="bbs-title">论坛交流</h1>
       <div class="bbs-toolbar-actions">
+        <div class="bbs-search">
+          <span class="bbs-search-icon">🔍</span>
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="搜索话题…"
+            @keyup.enter="applySearch"
+          />
+          <span v-if="searchKeyword" class="bbs-search-clear" @click="clearSearch">×</span>
+        </div>
         <span v-if="user" class="bbs-user">
           <img v-if="user.avatar" class="bbs-avatar sm" :src="user.avatar" :alt="user.name" />
           <span v-else class="bbs-avatar sm">{{ (user.name || '?').slice(0, 1) }}</span>
@@ -10,6 +20,12 @@
         </span>
         <button class="bbs-btn bbs-btn-primary" @click="goNew">发帖</button>
       </div>
+    </div>
+
+    <!-- 搜索结果提示条 -->
+    <div v-if="searching" class="bbs-searching-bar">
+      「{{ searching }}」的搜索结果<span v-if="!loading && total !== null">（{{ total }} 条）</span>
+      <span class="bbs-searching-clear" @click="clearSearch">清除</span>
     </div>
 
     <!-- 板块 pills（Flarum 式：全部 + 各板块） -->
@@ -91,6 +107,9 @@ const loading = ref(false)
 const page = ref(1)
 const hasMore = ref(false)
 const user = computed(() => getUser())
+const searchKeyword = ref('')
+const searching = ref('')
+const total = ref(null)
 
 const activeNode = computed(() => route.params.node || '')
 
@@ -109,15 +128,28 @@ async function loadTopics(reset = false) {
   }
   loading.value = true
   try {
-    const { list, total } = await listTopics({
+    const { list, total: t } = await listTopics({
       node: activeNode.value || undefined,
+      q: searching.value || undefined,
       page: page.value
     })
     topics.value = reset ? list : [...topics.value, ...list]
-    hasMore.value = topics.value.length < total
+    total.value = t
+    hasMore.value = topics.value.length < t
   } finally {
     loading.value = false
   }
+}
+
+function applySearch() {
+  searching.value = searchKeyword.value.trim()
+  loadTopics(true)
+}
+
+function clearSearch() {
+  searchKeyword.value = ''
+  searching.value = ''
+  loadTopics(true)
 }
 
 function loadMore() {
@@ -158,5 +190,78 @@ watch(activeNode, () => loadTopics(true))
   width: 28px;
   height: 28px;
   font-size: 13px;
+}
+
+/* 搜索框（Flarum 式：浅底圆角，图标+清除） */
+.bbs-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #dce4dc;
+  border-radius: 999px;
+  padding: 0 12px;
+  height: 34px;
+  transition: border-color 0.2s ease;
+}
+.bbs-search:focus-within {
+  border-color: var(--primary-green);
+}
+.bbs-search input {
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 13px;
+  width: 170px;
+  color: var(--text-dark);
+}
+.bbs-search input::placeholder {
+  color: var(--text-light);
+}
+.bbs-search-icon {
+  font-size: 12px;
+  opacity: 0.6;
+}
+.bbs-search-clear {
+  cursor: pointer;
+  color: var(--text-light);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.bbs-search-clear:hover {
+  color: var(--text-dark);
+}
+
+/* 搜索结果提示条 */
+.bbs-searching-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-gray);
+  background: #eef4ee;
+  border-radius: 6px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+}
+.bbs-searching-clear {
+  margin-left: auto;
+  color: var(--primary-green);
+  cursor: pointer;
+}
+.bbs-searching-clear:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .bbs-search {
+    order: 3;
+    width: 100%;
+  }
+  .bbs-search input {
+    width: 100%;
+    flex: 1;
+  }
 }
 </style>

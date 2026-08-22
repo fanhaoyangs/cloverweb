@@ -21,6 +21,14 @@
           <el-icon><Files /></el-icon>
           <span>静态页管理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/bbs/topics">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>论坛话题</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/bbs/nodes">
+          <el-icon><Grid /></el-icon>
+          <span>论坛板块</span>
+        </el-menu-item>
         <template v-if="onSitepages">
           <div class="sitepage-select">
             <el-select
@@ -85,12 +93,16 @@ const currentPage = computed(() => route.query.page || '')
 
 const activeMenu = computed(() => {
   if (route.path.startsWith('/admin/sitepages')) return '/admin/sitepages'
+  if (route.path.startsWith('/admin/bbs/topics')) return '/admin/bbs/topics'
+  if (route.path.startsWith('/admin/bbs/nodes')) return '/admin/bbs/nodes'
   return '/admin/articles'
 })
 
 const pageTitle = computed(() => {
   if (route.name === 'AdminArticleEdit') return route.params.id ? '编辑文章' : '新建文章'
   if (route.path.startsWith('/admin/sitepages')) return '静态页管理'
+  if (route.path.startsWith('/admin/bbs/topics')) return '论坛话题管理'
+  if (route.path.startsWith('/admin/bbs/nodes')) return '论坛板块管理'
   return '文章管理'
 })
 

@@ -124,6 +124,13 @@ function onKeydown(e) {
     emit('submit')
   }
 }
+
+/** 暴露给父组件：聚焦文本域（引用回复时调用） */
+function focus() {
+  taRef.value?.focus()
+}
+
+defineExpose({ focus })
 </script>
 
 <style scoped>
